@@ -1,7 +1,7 @@
 #define PI 3.1415926538
 
 #define Shadow_Distort_Factor 0.10 //Distortion factor for the shadow map. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.20 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.30 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.40 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.50 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.60 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.70 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.80 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.90 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.00]
-#define Shadow_Bias 0.008 //Increase this if you get shadow acne. Decrease this if you get peter panning. [0.000 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0.010 0.012 0.014 0.016 0.018 0.020 0.022 0.024 0.026 0.028 0.030 0.035 0.040 0.045 0.050]
+#define Shadow_Bias 0.005 //Increase this if you get shadow acne. Decrease this if you get peter panning. [0.000 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0.010 0.012 0.014 0.016 0.018 0.020 0.022 0.024 0.026 0.028 0.030 0.035 0.040 0.045 0.050]
 #define Shadow_Blur_Amount 1.0 //Multiplier for the amount of blur at the edges of shadows. Lower values means less blur (harder edges). Higher values can help hide aliasing in shadows. [0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0]
 #define Shadow_Darkness 0.6 //The darkness of shadows in the world. 1.0 means shadows are completely pitch black. 0.0 means shadows have no effect on brightness (invisible). [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
 #define HQ_Shadow_Filter //Increases shadow sample count, improving quality at a slight performance cost.
@@ -30,6 +30,8 @@ uniform int isEyeInWater;
 const int shadowMapResolution = 2048; //The resolution of shadow map. Higher values leads to higher quality shaders. Lower values leads to better performance. [512 1024 2048 4096]
 const float shadowDistance = 120; //The distance over which shadows are rendered in blocks. Higher values will cause shadows to render farther in the distance but also decrease shadow quality. [80 120 160 200 240]
 const float sunPathRotation = -40; //Rotation of the path of the sun and moon in the sky. Helps reduce shadow acne at perpendicular angles. 0 means directly above the player. 90 means horizontal to the ground. Negative values are the opposite side of the vertical. [-90 -80 -70 -60 -50 -40 -30 -20 -10 0 10 20 30 40 50 60 70 80 90]
+const float wetnessHalflife = 100.0;
+const float drynessHalflife = 100.0;
 const int noiseTextureResolution = 256;
 /*
 const int colortex2Format = RGB32F;
@@ -126,7 +128,7 @@ float linearDepth(float depth) {
 }
 
 vec3 skyLightColor() {
-	return mix(vec3(0.25, 0.25, 0.4), vec3(1.0), smoothstep(0.0, 1.0, 3.9 * sin(worldTime * 3.14f / 12000.0f) + 0.5f));
+	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2, 0.2, 0.2), rainStrength), mix(vec3(1.1, 1.1, 0.9), vec3(0.4), rainStrength), smoothstep(0.0, 1.0, 3.9 * sin(worldTime * 3.14f / 12000.0f) + 0.5f));
 }
 
 float adjustLightmapTorch(float torch) {
@@ -191,11 +193,83 @@ vec3 reflectFromCamera(vec3 norm, float depth, vec2 texcoord) {
 }
 
 float calcSpecular(vec3 norm, float depth, vec3 material, vec2 texcoord, float power) {
-    vec3 reflectDir = reflectFromCamera(norm, depth, texcoord);
+    // vec3 reflectDir = reflectFromCamera(norm, depth, texcoord);
+    // float mult = material.r * 1.5 + wetness * 0.2;
+    // float spec = dot(normalize(shadowLightPosition), reflectDir);
+    // spec = pow(spec, power) * mult;
+    // return clamp(spec, 0.0, 1.0);
+
+    vec3 lightDir = normalize(shadowLightPosition);
+    vec3 viewDir = getCameraVector(depth, texcoord);
+    vec3 halfwayDir = normalize(viewDir + lightDir);
     float mult = material.r * 1.5 + wetness * 0.2;
-    float spec = dot(normalize(shadowLightPosition), reflectDir);
-    spec = pow(spec, power) * mult;
-    return clamp(spec, 0.0, 1.0);
+    return mult * pow(max(dot(norm, halfwayDir), 0.0), power);
+    // return pow(PI, 0.0);
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
+}
+
+float DistributionGGX(vec3 normal, vec3 halfwayDir, float roughness) {
+    float a = roughness*roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(normal, halfwayDir), 0.0);
+    float NdotH2 = NdotH*NdotH;
+	
+    float num = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+	
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float num = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+	
+    return num / denom;
+}
+
+float GeometrySmith(vec3 normal, vec3 viewDir, vec3 lightDir, float roughness) {
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+	
+    return ggx1 * ggx2;
+}
+
+vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
+    vec3 lightDir = normalize(shadowLightPosition);
+    vec3 viewDir = getCameraVector(depth, texcoord);
+    vec3 halfwayDir = normalize(viewDir + lightDir);
+
+    vec3 F0 = mix(vec3(0.1), vec3(1.00, 0.71, 0.29), specMap.g);
+
+    vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
+    float NDF = DistributionGGX(normal, halfwayDir, 1.0 - specMap.r);
+    float G = GeometrySmith(normal, viewDir, lightDir, 1.0 - specMap.r);
+
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(normal, viewDir), 0.0) * max(dot(normal, lightDir), 0.0);
+    vec3 specular = numerator / max(denominator, 0.001);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    // kD *= 1.0 - specMap.g;
+        
+    // add to outgoing radiance Lo
+    float NdotL = max(dot(normal, lightDir), 0.0);                
+    vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
+
+    vec3 ambient = (lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness) + lightmapTorch(lmcoord.r)) * albedo;
+    vec3 color = ambient + Lo;
+
+    return color;
 }
 
 vec3 blendToFog(vec3 color, float depth) {
