@@ -30,8 +30,8 @@ uniform int isEyeInWater;
 const int shadowMapResolution = 2048; //The resolution of shadow map. Higher values leads to higher quality shaders. Lower values leads to better performance. [512 1024 2048 4096]
 const float shadowDistance = 120; //The distance over which shadows are rendered in blocks. Higher values will cause shadows to render farther in the distance but also decrease shadow quality. [80 120 160 200 240]
 const float sunPathRotation = -40; //Rotation of the path of the sun and moon in the sky. Helps reduce shadow acne at perpendicular angles. 0 means directly above the player. 90 means horizontal to the ground. Negative values are the opposite side of the vertical. [-90 -80 -70 -60 -50 -40 -30 -20 -10 0 10 20 30 40 50 60 70 80 90]
-const float wetnessHalflife = 100.0;
-const float drynessHalflife = 100.0;
+const float wetnessHalflife = 200.0;
+const float drynessHalflife = 25.0;
 const int noiseTextureResolution = 256;
 /*
 const int colortex2Format = RGB32F;
@@ -212,7 +212,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 float DistributionGGX(vec3 normal, vec3 halfwayDir, float roughness) {
-    float a = roughness*roughness;
+    float a = roughness;
     float a2 = a*a;
     float NdotH = max(dot(normal, halfwayDir), 0.0);
     float NdotH2 = NdotH*NdotH;
@@ -250,41 +250,54 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
 
     // vec3 F0 = mix(vec3(0.1), vec3(1.00, 0.71, 0.29), specMap.g);
     vec3 F0 = vec3(min(specMap.g, 0.04));
+    float metalness = 0.0;
     if(specMap.g == 230.0 / 255.0) { // Iron
         F0 = vec3(0.56, 0.57, 0.58);
+        metalness = 1.0;
     }
     else if(specMap.g == 231.0 / 255.0) { // Gold
         F0 = vec3(1.00, 0.71, 0.29);
+        metalness = 1.0;
     }
     else if(specMap.g == 232.0 / 255.0) { // Aluminum
         F0 = vec3(0.91, 0.92, 0.92);
+        metalness = 1.0;
     }
     else if(specMap.g == 233.0 / 255.0) { // Chrome
         F0 = vec3(0.56, 0.57, 0.58);
+        metalness = 1.0;
     }
     else if(specMap.g == 234.0 / 255.0) { // Copper
         F0 = vec3(0.95, 0.64, 0.54);
+        metalness = 1.0;
     }
     else if(specMap.g == 235.0 / 255.0) { // Lead
         F0 = vec3(0.56, 0.57, 0.58);
+        metalness = 1.0;
     }
     else if(specMap.g == 236.0 / 255.0) { // Platinum
         F0 = vec3(0.56, 0.57, 0.58);
+        metalness = 1.0;
     }
     else if(specMap.g == 237.0 / 255.0) { // Silver
         F0 = vec3(0.95, 0.93, 0.88);
+        metalness = 1.0;
     }
-    else if(specMap.g == 255.0 / 255.0) { // Albedo based metal
+    else if(specMap.g > 237.5 / 255.0) { // Albedo based metal
         F0 = albedo;
+        metalness = 1.0;
     }
     
-    specMap.r = mix(specMap.r, max(specMap.r, 0.75), wetness);
-    // specMap.r = 0.75;
-    float roughness = pow(1.0 - specMap.r, 2.0);
+    float roughness = pow(1.0 - specMap.r, 2.0) * 0.997 + 0.003;
+    roughness = mix(roughness, min(roughness, 0.03), wetness);
+
+    float porosity = (specMap.b < 64.9 / 255.0) ? specMap.b * 2.0 : 0.0;
+
+    albedo = mix(albedo, (1.0 - porosity) * albedo, wetness);
 
     vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
-    float NDF = DistributionGGX(normal, halfwayDir, 1.0 - roughness);
-    float G = GeometrySmith(normal, viewDir, lightDir, 1.0 - roughness);
+    float NDF = DistributionGGX(normal, halfwayDir, roughness);
+    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
 
     vec3 numerator = NDF * G * F;
     float denominator = 4.0 * max(dot(normal, viewDir), 0.0) * max(dot(normal, lightDir), 0.0);
@@ -292,13 +305,13 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    // kD *= 1.0 - specMap.g;
+    // kD *= 1.0 - metalness;
         
     // add to outgoing radiance Lo
     float NdotL = max(dot(normal, lightDir), 0.0);                
     vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
 
-    vec3 ambient = (lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness) + lightmapTorch(lmcoord.r)) * albedo * material.g;
+    vec3 ambient = (max(lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness), lightmapTorch(lmcoord.r))) * albedo * material.g;
     vec3 color = ambient + Lo;
 
     return color;

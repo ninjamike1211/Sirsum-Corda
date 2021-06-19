@@ -10,6 +10,7 @@ uniform sampler2D colortex4; // Specular map
 uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
 uniform sampler2D colortex6; // 
 uniform sampler2D colortex7; // Deferred output
+uniform sampler2D colortex8; // Bloom output
 uniform sampler2D depthtex0;
 
 varying vec2 texcoord;
@@ -58,6 +59,7 @@ void main() {
 	// color = vec3(dot(getCameraVector(depth, texcoord), normalize(-shadowLightPosition)));
 	// color = vec3(specularMap.g == 230.0/255.0);
 	// color = vec3((specularMap.g - 229.0 / 255.0) * 255.0 / 8.0);
+	// color = vec3((specularMap.b < 64.9 / 255.0) ? specularMap.b * 2.0 : 0.0);
 
 	// vec3 lightDir = normalize(shadowLightPosition);
     // vec3 viewDir = getCameraVector(depth, texcoord);
@@ -66,6 +68,9 @@ void main() {
 	// float mult = material.r * 1.0 + wetness * 0.2;
     // color = vec3(mult * pow(max(dot(normal, halfwayDir), 0.0), 64.0)) * shadow;
 
-/* DRAWBUFFERS:7 */
+/* DRAWBUFFERS:78 */
 	gl_FragData[0] = vec4(color, 1.0); //gcolor
+
+	float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
+	gl_FragData[1] = vec4((brightness > 1.1) ? color : texture2D(colortex8, texcoord).rgb, 1.0);
 }

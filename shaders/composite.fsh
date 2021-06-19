@@ -63,5 +63,5 @@ void main() {
 	gl_FragData[0] = vec4(color, 1.0); //gcolor
 
 	float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
-	gl_FragData[1] = vec4((brightness > 0.8) ? color : vec3(0.0), 1.0); // bloom
+	gl_FragData[1] = vec4((brightness > 1.1) ? color : texture2D(colortex8, texcoord).rgb, 1.0); // bloom
 }
