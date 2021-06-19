@@ -37,7 +37,7 @@ void main() {
 	// color += specular;
 	// color *= material.g;
 
-	color = PBRLighting(texcoord, depth, color, normal, specularMap + vec3(wetness, 0.0, 0.0), material, 2.0 * lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+	color = PBRLighting(texcoord, depth, color, normal, specularMap, material, 2.0 * lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
 
 	color = blendToFog(color, depth);
 
@@ -56,6 +56,8 @@ void main() {
 	// color = material;
 	// color = vec3(material.g);
 	// color = vec3(dot(getCameraVector(depth, texcoord), normalize(-shadowLightPosition)));
+	// color = vec3(specularMap.g == 230.0/255.0);
+	// color = vec3((specularMap.g - 229.0 / 255.0) * 255.0 / 8.0);
 
 	// vec3 lightDir = normalize(shadowLightPosition);
     // vec3 viewDir = getCameraVector(depth, texcoord);

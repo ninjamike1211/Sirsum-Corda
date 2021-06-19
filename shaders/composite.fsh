@@ -20,32 +20,36 @@ void main() {
 	vec3 deferredColor = texture2D(colortex7, texcoord).rgb;
 	vec4 waterColor = texture2D(colortex0, texcoord);
 
-	float depth = texture2D(depthtex0, texcoord).r;
-	vec3 normal = texture2D(colortex1, texcoord).xyz * 2.0 - 1.0;
-	vec3 shadowPos = texture2D(colortex2, texcoord).xyz;
-	vec4 lmcoord = texture2D(colortex3, texcoord);
-	vec3 specularMap = texture2D(colortex4, texcoord).rgb;
-	vec3 material = texture2D(colortex5, texcoord).rgb;
+	vec3 color = deferredColor;
 
-	float NdotL = dot(normal, normalize(shadowLightPosition));
+	if(waterColor.a > 0.0) {
+		float depth = texture2D(depthtex0, texcoord).r;
+		vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
+		vec3 shadowPos = texture2D(colortex2, texcoord).xyz;
+		vec4 lmcoord = texture2D(colortex3, texcoord);
+		vec3 specularMap = texture2D(colortex4, texcoord).rgb;
+		vec3 material = texture2D(colortex5, texcoord).rgb;
 
-	vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
-	// vec3 specular = shadow * calcSpecular(normal, depth, specularMap, texcoord, 64.0);
+		float NdotL = dot(normal, normalize(shadowLightPosition));
 
-	if(lmcoord.b != 0.0) {
-		depth = lmcoord.b;
-		shadow = vec3(1.0);
+		vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
+		// vec3 specular = shadow * calcSpecular(normal, depth, specularMap, texcoord, 64.0);
+
+		if(lmcoord.b != 0.0) {
+			depth = lmcoord.b;
+			shadow = vec3(1.0);
+		}
+
+		// waterColor.rgb *= adjustLightMap(shadow, lmcoord.rg) + specular;
+		// waterColor.rgb += specular;
+		// waterColor *= material.g;
+
+		waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap, material, 2.0 * lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+
+		waterColor.rgb = blendToFog(waterColor.rgb, depth);
+
+		color = mix(deferredColor, waterColor.rgb, waterColor.a);
 	}
-
-	// waterColor.rgb *= adjustLightMap(shadow, lmcoord.rg) + specular;
-	// waterColor.rgb += specular;
-	// waterColor *= material.g;
-
-	waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap + vec3(wetness, 0.0, 0.0), material, 2.0 * lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
-
-	waterColor.rgb = blendToFog(waterColor.rgb, depth);
-
-	vec3 color = mix(deferredColor, waterColor.rgb, waterColor.a);
 	// vec3 color = deferredColor;
 
 	// color = lmcoord.rgb;

@@ -128,7 +128,7 @@ float linearDepth(float depth) {
 }
 
 vec3 skyLightColor() {
-	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2, 0.2, 0.2), rainStrength), mix(vec3(1.1, 1.1, 0.9), vec3(0.4), rainStrength), smoothstep(0.0, 1.0, 3.9 * sin(worldTime * 3.14f / 12000.0f) + 0.5f));
+	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2), rainStrength), mix(vec3(1.1, 1.1, 0.9), vec3(0.4), rainStrength), smoothstep(0.0, 1.0, 3.9 * sin(worldTime * 3.14f / 12000.0f) + 0.5f));
 }
 
 float adjustLightmapTorch(float torch) {
@@ -248,11 +248,43 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     vec3 viewDir = getCameraVector(depth, texcoord);
     vec3 halfwayDir = normalize(viewDir + lightDir);
 
-    vec3 F0 = mix(vec3(0.1), vec3(1.00, 0.71, 0.29), specMap.g);
+    // vec3 F0 = mix(vec3(0.1), vec3(1.00, 0.71, 0.29), specMap.g);
+    vec3 F0 = vec3(min(specMap.g, 0.04));
+    if(specMap.g == 230.0 / 255.0) { // Iron
+        F0 = vec3(0.56, 0.57, 0.58);
+    }
+    else if(specMap.g == 231.0 / 255.0) { // Gold
+        F0 = vec3(1.00, 0.71, 0.29);
+    }
+    else if(specMap.g == 232.0 / 255.0) { // Aluminum
+        F0 = vec3(0.91, 0.92, 0.92);
+    }
+    else if(specMap.g == 233.0 / 255.0) { // Chrome
+        F0 = vec3(0.56, 0.57, 0.58);
+    }
+    else if(specMap.g == 234.0 / 255.0) { // Copper
+        F0 = vec3(0.95, 0.64, 0.54);
+    }
+    else if(specMap.g == 235.0 / 255.0) { // Lead
+        F0 = vec3(0.56, 0.57, 0.58);
+    }
+    else if(specMap.g == 236.0 / 255.0) { // Platinum
+        F0 = vec3(0.56, 0.57, 0.58);
+    }
+    else if(specMap.g == 237.0 / 255.0) { // Silver
+        F0 = vec3(0.95, 0.93, 0.88);
+    }
+    else if(specMap.g == 255.0 / 255.0) { // Albedo based metal
+        F0 = albedo;
+    }
+    
+    specMap.r = mix(specMap.r, max(specMap.r, 0.75), wetness);
+    // specMap.r = 0.75;
+    float roughness = pow(1.0 - specMap.r, 2.0);
 
     vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
-    float NDF = DistributionGGX(normal, halfwayDir, 1.0 - specMap.r);
-    float G = GeometrySmith(normal, viewDir, lightDir, 1.0 - specMap.r);
+    float NDF = DistributionGGX(normal, halfwayDir, 1.0 - roughness);
+    float G = GeometrySmith(normal, viewDir, lightDir, 1.0 - roughness);
 
     vec3 numerator = NDF * G * F;
     float denominator = 4.0 * max(dot(normal, viewDir), 0.0) * max(dot(normal, lightDir), 0.0);
@@ -266,7 +298,7 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     float NdotL = max(dot(normal, lightDir), 0.0);                
     vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
 
-    vec3 ambient = (lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness) + lightmapTorch(lmcoord.r)) * albedo;
+    vec3 ambient = (lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness) + lightmapTorch(lmcoord.r)) * albedo * material.g;
     vec3 color = ambient + Lo;
 
     return color;
