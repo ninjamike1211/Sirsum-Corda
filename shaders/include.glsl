@@ -3,7 +3,7 @@
 #define Shadow_Distort_Factor 0.10 //Distortion factor for the shadow map. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.20 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.30 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.40 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.50 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.60 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.70 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.80 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.90 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.00]
 #define Shadow_Bias 0.005 //Increase this if you get shadow acne. Decrease this if you get peter panning. [0.000 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0.010 0.012 0.014 0.016 0.018 0.020 0.022 0.024 0.026 0.028 0.030 0.035 0.040 0.045 0.050]
 #define Shadow_Blur_Amount 1.0 //Multiplier for the amount of blur at the edges of shadows. Lower values means less blur (harder edges). Higher values can help hide aliasing in shadows. [0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0]
-#define Shadow_Darkness 0.6 //The darkness of shadows in the world. 1.0 means shadows are completely pitch black. 0.0 means shadows have no effect on brightness (invisible). [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+#define Shadow_Darkness 0.6 //The darkness of shadows in the world. 1.0 means shadows are completely pitch black. 0.0 means shadows have no effect on brightness (invisible). [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.85 0.9 0.95 1.0]
 #define HQ_Shadow_Filter //Increases shadow sample count, improving quality at a slight performance cost.
 
 #define water_wave //Causes water to displace and wave.
@@ -127,8 +127,17 @@ float linearDepth(float depth) {
 	return min(depth / far, 1.0);
 }
 
+float dayTimeFactor() {
+    float adjustedTime = mod(worldTime + 785.0, 24000.0);
+
+    if(adjustedTime > 13570.0)
+        return sin((adjustedTime - 3140.0) * PI / 10430.0);
+
+    return sin(adjustedTime * PI / 13570.0);
+}
+
 vec3 skyLightColor() {
-	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2), rainStrength), mix(vec3(1.1, 1.1, 0.9), vec3(0.4), rainStrength), smoothstep(0.0, 1.0, 3.9 * sin(worldTime * 3.14f / 12000.0f) + 0.5f));
+	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2), rainStrength), mix(vec3(1.1, 1.1, 0.9), vec3(0.4), rainStrength), dayTimeFactor() * 0.5 + 0.5);
 }
 
 float adjustLightmapTorch(float torch) {
@@ -248,6 +257,10 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     vec3 viewDir = getCameraVector(depth, texcoord);
     vec3 halfwayDir = normalize(viewDir + lightDir);
 
+    albedo = pow(albedo, vec3(2.2));
+
+    // light = pow(light, vec3(2.2));
+
     // vec3 F0 = mix(vec3(0.1), vec3(1.00, 0.71, 0.29), specMap.g);
     vec3 F0 = vec3(min(specMap.g, 0.04));
     float metalness = 0.0;
@@ -260,7 +273,7 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
         metalness = 1.0;
     }
     else if(specMap.g == 232.0 / 255.0) { // Aluminum
-        F0 = vec3(0.91, 0.92, 0.92);
+        F0 = vec3(0.96, 0.96, 0.97);
         metalness = 1.0;
     }
     else if(specMap.g == 233.0 / 255.0) { // Chrome
@@ -268,7 +281,7 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
         metalness = 1.0;
     }
     else if(specMap.g == 234.0 / 255.0) { // Copper
-        F0 = vec3(0.95, 0.64, 0.54);
+        F0 = vec3(0.98, 0.82, 0.76);
         metalness = 1.0;
     }
     else if(specMap.g == 235.0 / 255.0) { // Lead
@@ -280,10 +293,10 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
         metalness = 1.0;
     }
     else if(specMap.g == 237.0 / 255.0) { // Silver
-        F0 = vec3(0.95, 0.93, 0.88);
+        F0 = vec3(0.98, 0.97, 0.95);
         metalness = 1.0;
     }
-    else if(specMap.g > 237.5 / 255.0) { // Albedo based metal
+    else if(specMap.g > 229.5 / 255.0) { // Albedo based metal
         F0 = albedo;
         metalness = 1.0;
     }
@@ -293,7 +306,8 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
 
     float porosity = (specMap.b < 64.9 / 255.0) ? specMap.b * 2.0 : 0.0;
 
-    albedo = mix(albedo, (1.0 - porosity) * albedo, wetness);
+    // albedo = mix(albedo, (1.0 - porosity) * albedo, wetness);
+    // albedo = pow(albedo, mix(vec3(1.0), vec3(1.0 + 10.0 * porosity), wetness));
 
     vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
     float NDF = DistributionGGX(normal, halfwayDir, roughness);
@@ -304,15 +318,19 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     vec3 specular = numerator / max(denominator, 0.001);
 
     vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
+    vec3 kD = clamp(vec3(1.0) - kS, 0.0, 1.0);
+    // kD = vec3(1.0);
     // kD *= 1.0 - metalness;
         
     // add to outgoing radiance Lo
-    float NdotL = max(dot(normal, lightDir), 0.0);                
+    float NdotL = max(dot(normal, lightDir), 0.0);
     vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
 
     vec3 ambient = (max(lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness), lightmapTorch(lmcoord.r))) * albedo * material.g;
     vec3 color = ambient + Lo;
+
+    color = color / (color + vec3(1.0));
+    color = pow(color, vec3(1.0/2.2)); 
 
     return color;
 }

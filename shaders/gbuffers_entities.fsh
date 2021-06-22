@@ -2,6 +2,7 @@
 
 uniform sampler2D lightmap;
 uniform sampler2D texture;
+uniform vec4 entityColor;
 #ifdef MC_NORMAL_MAP
 uniform sampler2D normals;
 #endif
@@ -17,6 +18,7 @@ varying vec4 shadowPos;
 
 void main() {
 	vec4 color = texture2D(texture, texcoord) * glcolor;
+	color.rgb = mix(color.rgb, entityColor.rgb, entityColor.a);
 	// color *= texture2D(lightmap, lmcoord);
 
 	// float shadowDepth = texture2D(shadowtex0, shadowPos.xy).r;

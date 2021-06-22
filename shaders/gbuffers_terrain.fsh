@@ -16,7 +16,8 @@ varying mat3 tbn;
 varying vec4 shadowPos;
 
 void main() {
-	vec4 color = texture2D(texture, texcoord) * glcolor;
+	vec4 color = texture2D(texture, texcoord);
+	color.rgb *= glcolor.rgb;
 	// color *= texture2D(lightmap, lmcoord);
 
 	// float shadowDepth = texture2D(shadowtex0, shadowPos.xy).r;
@@ -32,7 +33,8 @@ void main() {
 	#ifdef MC_NORMAL_MAP
         vec2 premap = texture2D(normals, texcoord).xy * 2.0 - 1.0;
         vec3 bumpmap = vec3(premap, sqrt(1.0 - premap.x * premap.x - premap.y * premap.y));
-		float ao = texture2D(normals, texcoord).b;
+		// float ao = texture2D(normals, texcoord).b;
+		float ao = glcolor.a;
 		float height = texture2D(normals, texcoord).a;
 	#else
 		vec3 bumpmap = vec3(0.0, 0.0, 1.0);

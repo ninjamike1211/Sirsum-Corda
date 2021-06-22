@@ -55,7 +55,8 @@ void main() {
 	// color = vec3(0.0);
 	// color = specularMap;
 	// color = material;
-	// color = vec3(material.g);
+	// color = shadow;
+	// color = vec3(sqrt(material.g));
 	// color = vec3(dot(getCameraVector(depth, texcoord), normalize(-shadowLightPosition)));
 	// color = vec3(specularMap.g == 230.0/255.0);
 	// color = vec3((specularMap.g - 229.0 / 255.0) * 255.0 / 8.0);
