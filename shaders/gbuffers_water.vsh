@@ -1,21 +1,16 @@
 #version 120
 
-uniform mat4 gbufferModelView;
-uniform mat4 gbufferModelViewInverse;
-uniform mat4 shadowModelView;
-uniform mat4 shadowProjection;
+#include "include.glsl"
 
-varying vec2 lmcoord;
 varying vec2 texcoord;
+varying vec2 lmcoord;
 varying vec4 glcolor;
+varying vec4 viewPos;
 varying mat3 tbn;
-varying vec4 shadowPos;
 
 attribute vec4 at_tangent;
 attribute vec4 mc_Entity;
 attribute vec2 mc_midTexCoord;
-
-#include "include.glsl"
 
 void main() {
 	texcoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
@@ -23,18 +18,9 @@ void main() {
 	glcolor = gl_Color;
 
 	float blockType = getBlockType(mc_Entity.x);
-	gl_Position = gl_ModelViewProjectionMatrix * (gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0));
-
-	float lightDot = dot(normalize(shadowLightPosition), normalize(gl_NormalMatrix * gl_Normal));
-	vec4 viewPos = gl_ModelViewMatrix * gl_Vertex;
-	vec4 playerPos = gbufferModelViewInverse * viewPos;
-	shadowPos = shadowProjection * (shadowModelView * playerPos); //convert to shadow screen space
-	float distortFactor = getDistortFactor(shadowPos.xy);
-	shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
-	shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
-	shadowPos.z -= Shadow_Bias * (distortFactor * distortFactor) / abs(lightDot); //apply shadow bias
-		
-	shadowPos.w = lightDot;
+	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0);
+	gl_Position = gl_ModelViewProjectionMatrix * vertexPos;
+	viewPos = gl_ModelViewMatrix * vertexPos;
 
 	vec3 normal = gl_NormalMatrix * gl_Normal;
     vec3 tangent = normalize(gl_NormalMatrix * at_tangent.xyz);

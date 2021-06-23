@@ -4,7 +4,7 @@
 
 uniform sampler2D colortex0; // Albedo
 uniform sampler2D colortex1; // Normal
-uniform sampler2D colortex2; // Shadow map texture coordinates
+uniform sampler2D colortex2; // view space position
 uniform sampler2D colortex3; // Light map
 uniform sampler2D colortex4; // Specular map
 uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
@@ -12,6 +12,10 @@ uniform sampler2D colortex6; //
 uniform sampler2D colortex7; // Deferred output
 uniform sampler2D colortex8; // Bloom output
 uniform sampler2D depthtex0;
+uniform mat4 gbufferModelView;
+uniform mat4 gbufferModelViewInverse;
+uniform mat4 shadowModelView;
+uniform mat4 shadowProjection;
 
 varying vec2 texcoord;
 
@@ -19,7 +23,7 @@ void main() {
 	float depth = texture2D(depthtex0, texcoord).r;
 	vec3 color = texture2D(colortex0, texcoord).rgb;
 	vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
-	vec3 shadowPos = texture2D(colortex2, texcoord).xyz;
+	vec4 viewPos = texture2D(colortex2, texcoord);
 	vec4 lmcoord = texture2D(colortex3, texcoord);
 	vec3 specularMap = texture2D(colortex4, texcoord).rgb;
 	vec3 material = texture2D(colortex5, texcoord).rgb;
@@ -30,6 +34,13 @@ void main() {
 	}
 
 	float NdotL = dot(normal, normalize(shadowLightPosition));
+
+	vec4 playerPos = gbufferModelViewInverse * viewPos;
+	vec3 shadowPos = (shadowProjection * (shadowModelView * playerPos)).xyz; //convert to shadow screen space
+	float distortFactor = getDistortFactor(shadowPos.xy);
+	shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
+	shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
+	shadowPos.z -= Shadow_Bias * (distortFactor * distortFactor) / abs(NdotL); //apply shadow bias
 
 	vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
 	// vec3 specular = shadow * calcSpecular(normal, depth, specularMap, texcoord, 16.0);
@@ -48,15 +59,16 @@ void main() {
 	// color = vec3(shadowPos.z);
 	// color = vec3(shadowPos.z - shadowDepth);
 	// color = shadowPos.xyz;
-	// color = vec3(shadowVal);
+	// color = vec3(shadow);
 	// color = normal;
 	// color = vec3(lmcoord.rg, 0.0);
-	// color = lightmap(lmcoord);
+	// color = lmcoord.rgb;
 	// color = vec3(0.0);
 	// color = specularMap;
 	// color = material;
 	// color = shadow;
-	// color = vec3(sqrt(material.g));
+	// color = viewPos.xyz;
+	// color = vec3(material.g);
 	// color = vec3(dot(getCameraVector(depth, texcoord), normalize(-shadowLightPosition)));
 	// color = vec3(specularMap.g == 230.0/255.0);
 	// color = vec3((specularMap.g - 229.0 / 255.0) * 255.0 / 8.0);

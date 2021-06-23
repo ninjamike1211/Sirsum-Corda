@@ -137,7 +137,8 @@ float dayTimeFactor() {
 }
 
 vec3 skyLightColor() {
-	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2), rainStrength), mix(vec3(1.1, 1.1, 0.9), vec3(0.4), rainStrength), dayTimeFactor() * 0.5 + 0.5);
+    float timeFactor = dayTimeFactor();
+	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2), rainStrength), mix(mix(vec3(1.0, 0.6, 0.4), vec3(1.1, 1.1, 0.9), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), vec3(0.4), rainStrength), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
 }
 
 float adjustLightmapTorch(float torch) {
@@ -157,7 +158,7 @@ vec3 lightmapSky(float amount) {
 }
 
 vec3 lightmapTorch(float amount) {
-	return mix(vec3(0.0), vec3(1.2, 0.9, 0.5), adjustLightmapTorch(amount));
+	return mix(vec3(0.0), vec3(3.0, 1.7, 0.7), adjustLightmapTorch(amount));
 }
 
 vec3 calculateShadow(vec3 shadowPos, float NdotL, vec2 texcoord) {
@@ -301,7 +302,7 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
         metalness = 1.0;
     }
     
-    float roughness = pow(1.0 - specMap.r, 2.0) * 0.997 + 0.003;
+    float roughness = pow(1.0 - specMap.r, 2.0) * 0.99 + 0.01;
     roughness = mix(roughness, min(roughness, 0.03), wetness);
 
     float porosity = (specMap.b < 64.9 / 255.0) ? specMap.b * 2.0 : 0.0;
@@ -326,7 +327,10 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     float NdotL = max(dot(normal, lightDir), 0.0);
     vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
 
-    vec3 ambient = (max(lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness), lightmapTorch(lmcoord.r))) * albedo * material.g;
+    vec3 skyAmbient = lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r);
+    // vec3 ambient = (length(skyAmbient) > length(torchAmbient) ? skyAmbient : torchAmbient) * albedo * material.g;
+    vec3 ambient = (skyAmbient + torchAmbient) * albedo /* material.g*/;
     vec3 color = ambient + Lo;
 
     color = color / (color + vec3(1.0));
