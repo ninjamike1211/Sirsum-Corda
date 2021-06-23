@@ -15,6 +15,7 @@ uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
 uniform sampler2D shadowcolor0;
 uniform sampler2D noisetex;
+uniform mat4 gbufferModelView;
 uniform mat4 gbufferProjectionInverse;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
@@ -32,7 +33,8 @@ const float shadowDistance = 120; //The distance over which shadows are rendered
 const float sunPathRotation = -40; //Rotation of the path of the sun and moon in the sky. Helps reduce shadow acne at perpendicular angles. 0 means directly above the player. 90 means horizontal to the ground. Negative values are the opposite side of the vertical. [-90 -80 -70 -60 -50 -40 -30 -20 -10 0 10 20 30 40 50 60 70 80 90]
 const float wetnessHalflife = 200.0;
 const float drynessHalflife = 25.0;
-const int noiseTextureResolution = 256;
+const int noiseTextureResolution = 1080;
+const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //Used for manually calculating the sun's position, since the sunPosition uniform is inaccurate in the skybasic stage.
 /*
 const int colortex2Format = RGB32F;
 */
@@ -127,6 +129,27 @@ float linearDepth(float depth) {
 	return min(depth / far, 1.0);
 }
 
+vec3 fixedSunPosition() {
+    //minecraft's native calculateCelestialAngle() function, ported to GLSL.
+		float ang = fract(worldTime / 24000.0 - 0.25);
+		ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
+
+		//this one tracks optifine's sunPosition uniform.
+		return mat3(gbufferModelView) * vec3(-sin(ang), cos(ang) * sunRotationData);
+		//this one tracks the center of the *actual* sun, which is ever-so-slightly different.
+		//sunPosNorm = normalize((gbufferModelView * vec4(sin(ang) * -100.0, (cos(ang) * 100.0) * sunRotationData, 1.0)).xyz);
+		//I choose to use the sunPosition one for 2 reasons:
+		//1: it's simpler.
+		//2: it's consistent with other programs which are sensitive to subtle differences.
+}
+
+vec3 fixedLightPosition() {
+    if(worldTime < 23215 || worldTime > 12785)
+        return 1.0 - fixedSunPosition();
+    
+    return fixedSunPosition();
+}
+
 float dayTimeFactor() {
     float adjustedTime = mod(worldTime + 785.0, 24000.0);
 
@@ -202,20 +225,20 @@ vec3 reflectFromCamera(vec3 norm, float depth, vec2 texcoord) {
     return -reflect(viewDir, norm);
 }
 
-float calcSpecular(vec3 norm, float depth, vec3 material, vec2 texcoord, float power) {
-    // vec3 reflectDir = reflectFromCamera(norm, depth, texcoord);
-    // float mult = material.r * 1.5 + wetness * 0.2;
-    // float spec = dot(normalize(shadowLightPosition), reflectDir);
-    // spec = pow(spec, power) * mult;
-    // return clamp(spec, 0.0, 1.0);
+// float calcSpecular(vec3 norm, float depth, vec3 material, vec2 texcoord, float power) {
+//     // vec3 reflectDir = reflectFromCamera(norm, depth, texcoord);
+//     // float mult = material.r * 1.5 + wetness * 0.2;
+//     // float spec = dot(normalize(shadowLightPosition), reflectDir);
+//     // spec = pow(spec, power) * mult;
+//     // return clamp(spec, 0.0, 1.0);
 
-    vec3 lightDir = normalize(shadowLightPosition);
-    vec3 viewDir = getCameraVector(depth, texcoord);
-    vec3 halfwayDir = normalize(viewDir + lightDir);
-    float mult = material.r * 1.5 + wetness * 0.2;
-    return mult * pow(max(dot(norm, halfwayDir), 0.0), power);
-    // return pow(PI, 0.0);
-}
+//     vec3 lightDir = normalize(shadowLightPosition);
+//     vec3 viewDir = getCameraVector(depth, texcoord);
+//     vec3 halfwayDir = normalize(viewDir + lightDir);
+//     float mult = material.r * 1.5 + wetness * 0.2;
+//     return mult * pow(max(dot(norm, halfwayDir), 0.0), power);
+//     // return pow(PI, 0.0);
+// }
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);

@@ -2,13 +2,6 @@
 
 #include "include.glsl"
 
-#define SUN_POSITION_FIX
-
-#ifdef SUN_POSITION_FIX
-	const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //Used for manually calculating the sun's position, since the sunPosition uniform is inaccurate in the skybasic stage.
-#endif
-
-uniform mat4 gbufferModelView;
 uniform vec3 sunPosition;
 
 varying vec4 starData; //rgb = star color, a = flag for weather or not this pixel is a star.
@@ -43,17 +36,7 @@ void main() {
 	upPosition = mat3(gbufferModelView) * vec3(0.0, 1.0, 0.0);
 
 	#ifdef SUN_POSITION_FIX
-		//minecraft's native calculateCelestialAngle() function, ported to GLSL.
-		float ang = fract(worldTime / 24000.0 - 0.25);
-		ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
-
-		//this one tracks optifine's sunPosition uniform.
-		sunPosNorm = mat3(gbufferModelView) * vec3(-sin(ang), cos(ang) * sunRotationData);
-		//this one tracks the center of the *actual* sun, which is ever-so-slightly different.
-		//sunPosNorm = normalize((gbufferModelView * vec4(sin(ang) * -100.0, (cos(ang) * 100.0) * sunRotationData, 1.0)).xyz);
-		//I choose to use the sunPosition one for 2 reasons:
-		//1: it's simpler.
-		//2: it's consistent with other programs which are sensitive to subtle differences.
+		sunPosNorm = fixedSunPosition();
 	#else
 		sunPosNorm = normalize(sunPosition);
 	#endif

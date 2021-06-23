@@ -13,7 +13,6 @@ uniform sampler2D colortex7; // Deferred output
 uniform sampler2D colortex8; // Bloom output
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
-uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
