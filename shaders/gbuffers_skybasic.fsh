@@ -94,6 +94,7 @@ void main() {
 		// color = vec3(dot(pos.xyz, upPosition));
 	}
 
-/* DRAWBUFFERS:0 */
+/* DRAWBUFFERS:02 */
 	gl_FragData[0] = vec4(color, 1.0); //gcolor
+	gl_FragData[1] = vec4(0.0, 0.0, 9999999.0, 1.0); //gcolor
 }

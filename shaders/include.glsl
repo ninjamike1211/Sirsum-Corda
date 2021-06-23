@@ -11,11 +11,14 @@
 #define vine_wave //Causes vines to swing slightly in the wind.
 #define grass_wave //Causes grass and some flowers to russle in the wind.
 
+#define SSAO // Screen space ambient occlusion. Provides shadows in corners at performance cost.
+
 uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
 uniform sampler2D shadowcolor0;
 uniform sampler2D noisetex;
 uniform mat4 gbufferModelView;
+uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
@@ -24,6 +27,8 @@ uniform float frameTimeCounter;
 uniform float rainStrength;
 uniform float near;
 uniform float far;
+uniform float viewWidth;
+uniform float viewHeight;
 uniform float wetness;
 uniform int worldTime;
 uniform int isEyeInWater;
@@ -33,11 +38,110 @@ const float shadowDistance = 120; //The distance over which shadows are rendered
 const float sunPathRotation = -40; //Rotation of the path of the sun and moon in the sky. Helps reduce shadow acne at perpendicular angles. 0 means directly above the player. 90 means horizontal to the ground. Negative values are the opposite side of the vertical. [-90 -80 -70 -60 -50 -40 -30 -20 -10 0 10 20 30 40 50 60 70 80 90]
 const float wetnessHalflife = 200.0;
 const float drynessHalflife = 25.0;
-const int noiseTextureResolution = 1080;
+const int noiseTextureResolution = 512;
 const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //Used for manually calculating the sun's position, since the sunPosition uniform is inaccurate in the skybasic stage.
 /*
 const int colortex2Format = RGB32F;
 */
+const vec3 aoKernel[] = vec3[](
+    vec3(0.069431655, 0.040512662, 0.059480842),
+    vec3(0.05884631, 0.0035979126, 0.08185793),
+    vec3(-0.074091464, -0.02866131, 0.06636617),
+    vec3(0.06360852, 0.06554057, 0.057471674),
+    vec3(0.04830485, -0.07395963, 0.072158635),
+    vec3(-0.03682454, 0.104013614, 0.051985096),
+    vec3(0.07220624, 0.06320196, 0.09011675),
+    vec3(0.0478162, -0.13414294, 0.013685009),
+    vec3(0.1267123, 0.08762908, 0.026061395),
+    vec3(-0.011465177, -0.17073913, 0.004816053),
+    vec3(0.123100154, 0.124983795, 0.06729256),
+    vec3(-0.07089526, -0.15086177, 0.12163032),
+    vec3(-0.13371174, -0.12891957, 0.12973621),
+    vec3(0.23262544, -0.055290237, 0.06780944),
+    vec3(0.022970699, 0.23253542, 0.13974331),
+    vec3(0.22677298, 0.004900441, 0.19289218),
+    vec3(-0.12767176, -0.27222365, 0.123366065),
+    vec3(0.26587808, -0.20422705, 0.11366146),
+    vec3(-0.12372873, -0.2571961, 0.2580425),
+    vec3(0.28893417, 0.039911225, 0.2984142),
+    vec3(-0.16237342, -0.3133139, 0.2817409),
+    vec3(0.26509774, 0.38389802, 0.14176378),
+    vec3(-0.41266912, -0.29397824, 0.13898318),
+    vec3(0.25083584, -0.20719247, 0.46185657),
+    vec3(-0.25281924, 0.50966007, 0.20944722),
+    vec3(0.32518202, -0.33133268, 0.45396826),
+    vec3(-0.5971795, -0.17293268, 0.30871043),
+    vec3(0.51756454, 0.52648634, 0.06007654),
+    vec3(-0.19645077, 0.45719165, 0.6123745),
+    vec3(0.6529396, 0.4847204, 0.20713681),
+    vec3(0.72675693, -0.131368, 0.49847344),
+    vec3(0.59863853, -0.54075235, 0.4914699)
+
+	// vec3(-0.034980517, -0.07308654, 0.058606513),
+	// vec3(0.03756984, -0.072102696, 0.0585978),
+	// vec3(0.06918004, 0.034017343, 0.065065324),
+	// vec3(-0.005725489, -0.017689845, 0.10026818),
+	// vec3(-0.0024451462, -0.10229702, 0.015646892),
+	// vec3(-0.031925168, -0.02320752, 0.09783151),
+	// vec3(-0.06793229, 0.05529296, 0.063027725),
+	// vec3(-0.01209211, 0.043860555, 0.10099145),
+	// vec3(0.10555697, 0.008753485, 0.042324428),
+	// vec3(0.081875466, -0.048372656, 0.069518544),
+	// vec3(-0.02898162, -0.0020893984, 0.11846109),
+	// vec3(-0.10734179, -0.038997177, 0.054600425),
+	// vec3(0.001121658, 0.10839674, 0.07468697),
+	// vec3(0.0382355, -0.13062601, 0.016750216),
+	// vec3(-0.10653227, -0.024923487, 0.09218294),
+	// vec3(0.020593332, -0.10940843, 0.09968734),
+	// vec3(0.10870629, -0.05270174, 0.09909357),
+	// vec3(-0.101664364, 0.07077516, 0.10671365),
+	// vec3(-0.09397825, -0.13871153, 0.03512405),
+	// vec3(-0.07309548, -0.010214948, 0.16342837),
+	// vec3(-0.13357458, -0.060898818, 0.11726911),
+	// vec3(-0.1812479, 0.0051940037, 0.07675678),
+	// vec3(-0.13638212, 0.09606439, 0.12145328),
+	// vec3(0.081188925, 0.14238939, 0.14103664),
+	// vec3(0.14691381, 0.08068207, 0.15243787),
+	// vec3(0.12507543, 0.09452677, 0.17817385),
+	// vec3(-0.029932378, -0.15652287, 0.19072066),
+	// vec3(0.16865447, -0.18223238, 0.07772384),
+	// vec3(0.18051505, 0.13493875, 0.15275605),
+	// vec3(-0.02180126, 0.22166462, 0.17746793),
+	// vec3(0.138826, 0.2622502, 0.024689237),
+	// vec3(0.15371771, 0.11623063, 0.2442952),
+	// vec3(0.13526349, 0.2697097, 0.12077029),
+	// vec3(0.1313422, 0.31269744, 0.009053342),
+	// vec3(-0.0022185133, 0.31079093, 0.16947818),
+	// vec3(-0.273788, -0.19623113, 0.15105066),
+	// vec3(-0.16376108, 0.298388, 0.17941986),
+	// vec3(-0.197984, -0.21250074, 0.27620816),
+	// vec3(0.32193616, 0.15964846, 0.21212348),
+	// vec3(-0.029422954, -0.3082821, 0.30435112),
+	// vec3(-0.112089105, 0.019694295, 0.4369861),
+	// vec3(-0.27036008, -0.37540528, 0.07921735),
+	// vec3(-0.44118622, -0.17253464, 0.115490176),
+	// vec3(0.3170158, 0.014442723, 0.39446947),
+	// vec3(-0.3384772, 0.34697533, 0.20267364),
+	// vec3(0.45703468, 0.06094783, 0.29046714),
+	// vec3(-0.37736368, -0.24280304, 0.34322315),
+	// vec3(-0.21585187, -0.4170773, 0.3494561),
+	// vec3(0.008988276, 0.3492018, 0.49549612),
+	// vec3(0.26397067, 0.3077667, 0.47899377),
+	// vec3(0.15404774, -0.57045406, 0.26918998),
+	// vec3(0.48351988, 0.40117705, 0.23704346),
+	// vec3(0.10314443, -0.6246343, 0.2846478),
+	// vec3(-0.10114718, -0.5171652, 0.48652062),
+	// vec3(-0.5003709, -0.24524792, 0.48800862),
+	// vec3(-0.54776156, -0.43065378, 0.3149907),
+	// vec3(0.1332165, -0.53897214, 0.56069785),
+	// vec3(-0.15972456, 0.39317474, 0.69449353),
+	// vec3(-0.688053, 0.18012664, 0.44533956),
+	// vec3(0.7846323, 0.08730391, 0.3531672),
+	// vec3(-0.6566118, 0.50826424, 0.32316768),
+	// vec3(-0.32328036, 0.2777686, 0.8126062),
+	// vec3(0.56942135, -0.6181151, 0.43129668),
+	// vec3(-0.84336746, -0.41986006, 0.2396183)
+);
 const vec2 shadowKernel[] = vec2[](
     #ifndef HQ_Shadow_Filter
 	vec2(0., 0.),
@@ -194,7 +298,7 @@ vec3 calculateShadow(vec3 shadowPos, float NdotL, vec2 texcoord) {
 		shadowVal = vec3(1.0);
 	}
 	else {
-		for(int i = 0; i < shadowKernel.length(); i++) {
+		for(int i = 0; i < shadowKernel.length(); ++i) {
 			vec2 offset = Shadow_Blur_Amount * rotation * shadowKernel[i];
 			vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy + offset);
 			shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
@@ -353,13 +457,46 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     vec3 skyAmbient = lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness);
     vec3 torchAmbient = lightmapTorch(lmcoord.r);
     // vec3 ambient = (length(skyAmbient) > length(torchAmbient) ? skyAmbient : torchAmbient) * albedo * material.g;
-    vec3 ambient = (skyAmbient + torchAmbient) * albedo /* material.g*/;
+    vec3 ambient = (skyAmbient + torchAmbient) * albedo * material.g;
     vec3 color = ambient + Lo;
 
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2)); 
 
     return color;
+}
+
+float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, sampler2D aoNoiseTex) {
+    vec2 noiseCoord = vec2(mod(texcoord.x * viewWidth, 4.0) / 4.0, mod(texcoord.y * viewHeight, 4.0) / 4.0);
+    vec3 rvec = vec3(texture2D(aoNoiseTex, noiseCoord).xy * 2.0 - 1.0, 0.0);
+	// vec3 rvec = vec3(1.0);
+	vec3 tangent = normalize(rvec - normal * dot(rvec, normal));
+	vec3 bitangent = cross(normal, tangent);
+	mat3 tbn = mat3(tangent, bitangent, normal);
+
+    float occlusion = 0.0;
+	float radius = 1.0;
+	for (int i = 0; i < aoKernel.length(); ++i) {
+		// get sample position:
+		vec3 sample = tbn * aoKernel[i];
+		sample = sample * radius + fragPos;
+		
+		// project sample position:
+		vec4 offset = vec4(sample, 1.0);
+		offset = gbufferProjection * offset;
+		offset.xy /= offset.w;
+		offset.xy = offset.xy * 0.5 + 0.5;
+		
+		// get sample depth:
+		float sampleDepth = texture2D(viewTex, offset.xy).z;
+		
+		// range check & accumulate:
+		float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
+        // float rangeCheck= abs(fragPos.z - sampleDepth) < radius ? 1.0 : 0.0;
+		occlusion += (sampleDepth >= sample.z ? 1.0 : 0.0) * rangeCheck;
+	}
+
+	return 1.0 - (occlusion / aoKernel.length());
 }
 
 vec3 blendToFog(vec3 color, float depth) {
