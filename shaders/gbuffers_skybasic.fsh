@@ -1,7 +1,7 @@
 #version 120
 
-#define SKY_SPLIT_OLD_NEW
-//#define OLD_SUN
+// #define SKY_SPLIT_OLD_NEW
+#define OLD_SUN
 
 uniform float viewHeight;
 uniform float viewWidth;
