@@ -12,7 +12,7 @@ varying vec2 texcoord;
 
 void main() {
 	/* DRAWBUFFERS:6 */
-	#ifdef SSAO
+	#if SSAO != 0
 		float depth = texture2D(depthtex0, texcoord).r;
 		vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
 		vec4 viewPos = texture2D(colortex2, texcoord);

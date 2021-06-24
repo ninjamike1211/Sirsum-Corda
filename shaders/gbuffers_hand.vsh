@@ -18,9 +18,8 @@ void main() {
 	glcolor = gl_Color;
 
 	float blockType = getBlockType(mc_Entity.x);
-	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0);
-	gl_Position = gl_ModelViewProjectionMatrix * vertexPos;
-	viewPos = gl_ModelViewMatrix * vertexPos;
+	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+	viewPos = gl_ModelViewMatrix * gl_Vertex;
 
 	vec3 normal = gl_NormalMatrix * gl_Normal;
     vec3 tangent = normalize(gl_NormalMatrix * at_tangent.xyz);

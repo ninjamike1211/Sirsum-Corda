@@ -11,6 +11,7 @@ uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
 uniform sampler2D colortex6; // SSAO
 uniform sampler2D colortex7; // Deferred output
 uniform sampler2D colortex8; // Bloom output
+uniform sampler2D colortex9; // Native normal
 uniform sampler2D depthtex0;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 shadowModelView;
@@ -32,7 +33,7 @@ void main() {
 		return;
 	}
 
-	#ifdef SSAO
+	#if SSAO != 0
 		vec2 texelSize = 1.0 / vec2(viewWidth, viewHeight);
 		float occlusion = 0.0;
 		for (int x = -2; x < 2; ++x) 
@@ -65,7 +66,7 @@ void main() {
 	// color += specular;
 	// color *= material.g;
 
-	color = PBRLighting(texcoord, depth, color, normal, specularMap, vec3(material.r, occlusion, material.b), 2.0 * lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+	color = PBRLighting(texcoord, depth, color, normal, specularMap, vec3(material.r, occlusion, material.b), lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
 
 	// color *= occlusion;
 
@@ -81,7 +82,6 @@ void main() {
 	// color = normal;
 	// color = vec3(lmcoord.rg, 0.0);
 	// color = lmcoord.rgb;
-	// color = vec3(0.0);
 	// color = specularMap;
 	// color = material;
 	// color = shadow;

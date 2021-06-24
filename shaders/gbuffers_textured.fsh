@@ -16,7 +16,7 @@ varying vec3 normal;
 varying vec4 viewPos;
 
 void main() {
-	/* DRAWBUFFERS:01234 */
+	/* DRAWBUFFERS:012345 */
 	vec4 color = texture2D(texture, texcoord) * glcolor;
 	// color *= texture2D(lightmap, lmcoord);
 
@@ -27,4 +27,5 @@ void main() {
 	#ifdef MC_SPECULAR_MAP
         gl_FragData[4] = vec4(texture2D(specular, texcoord).rgb, 1.0);
     #endif
+	gl_FragData[5] = vec4(1.0, 1.0, 0.0, 1.0);
 }

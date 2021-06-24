@@ -46,6 +46,7 @@ void main() {
 		vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
 		// vec3 specular = shadow * calcSpecular(normal, depth, specularMap, texcoord, 64.0);
 
+		// Handle weather (and how it doesn't write to depth buffer)
 		if(lmcoord.b != 0.0) {
 			depth = lmcoord.b;
 			shadow = vec3(1.0);
@@ -55,20 +56,21 @@ void main() {
 		// waterColor.rgb += specular;
 		// waterColor *= material.g;
 
-		waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap, material, 2.0 * lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+		waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap, material, lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
 
 		waterColor.rgb = blendToFog(waterColor.rgb, depth);
 
 		color = mix(deferredColor, waterColor.rgb, waterColor.a);
-	}
-	// vec3 color = deferredColor;
+		// vec3 color = deferredColor;
 
-	// color = lmcoord.rgb;
-	// color = normal;
-	// color = material;
-	// color = shadowPos;
-	// color = vec3(linearDepth(depth));
-	// color = vec3(abs(depth - texture2D(depthtex1, texcoord).r));
+		// color = lmcoord.rgb;
+		// color = normal;
+		// color = material;
+		// color = shadowPos;
+		// color = viewPos.xyz;
+		// color = vec3(linearDepth(depth));
+		// color = vec3(abs(depth - texture2D(depthtex1, texcoord).r));
+	}
 
 /* DRAWBUFFERS:08 */
 	gl_FragData[0] = vec4(color, 1.0); //gcolor

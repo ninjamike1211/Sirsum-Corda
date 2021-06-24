@@ -1,0 +1,9 @@
+value.SSAO.0=off
+value.SSAO.1=low
+value.SSAO.2=medium
+value.SSAO.3=high
+value.SSAO.4=ultra
+
+value.Shadow_Filter.0=off
+value.Shadow_Filter.1=low
+value.Shadow_Filter.2=high

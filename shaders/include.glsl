@@ -3,15 +3,16 @@
 #define Shadow_Distort_Factor 0.10 //Distortion factor for the shadow map. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.20 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.30 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.40 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.50 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.60 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.70 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.80 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.90 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.00]
 #define Shadow_Bias 0.005 //Increase this if you get shadow acne. Decrease this if you get peter panning. [0.000 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0.010 0.012 0.014 0.016 0.018 0.020 0.022 0.024 0.026 0.028 0.030 0.035 0.040 0.045 0.050]
 #define Shadow_Blur_Amount 1.0 //Multiplier for the amount of blur at the edges of shadows. Lower values means less blur (harder edges). Higher values can help hide aliasing in shadows. [0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0]
-#define Shadow_Darkness 0.6 //The darkness of shadows in the world. 1.0 means shadows are completely pitch black. 0.0 means shadows have no effect on brightness (invisible). [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.85 0.9 0.95 1.0]
-#define HQ_Shadow_Filter //Increases shadow sample count, improving quality at a slight performance cost.
+#define Shadow_Darkness 0.8 //The darkness of shadows in the world. 1.0 means shadows are completely pitch black. 0.0 means shadows have no effect on brightness (invisible). [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.85 0.9 0.95 1.0]
+#define Shadow_Filter 2 //Increases shadow sample count, improving quality at a slight performance cost. [0 1 2]
 
 #define water_wave //Causes water to displace and wave.
 #define leaves_wave //Causes leaves to russle and wave in the wind.
 #define vine_wave //Causes vines to swing slightly in the wind.
 #define grass_wave //Causes grass and some flowers to russle in the wind.
 
-#define SSAO // Screen space ambient occlusion. Provides shadows in corners at performance cost.
+#define SSAO 2 // Screen space ambient occlusion. Provides better shadows in corners and small spaces at performance cost. [0 1 2 3 4]
+#define SSAO_Radius 3.0 // Radius of SSAO. Higher values causes ao to be more spread out. Lower values will concentrate shadows more in corners. [0.5 0.75 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0]
 
 uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
@@ -23,6 +24,7 @@ uniform mat4 gbufferProjectionInverse;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
 uniform vec3 shadowLightPosition;
+uniform ivec2 eyeBrightnessSmooth;
 uniform float frameTimeCounter;
 uniform float rainStrength;
 uniform float near;
@@ -43,170 +45,202 @@ const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(
 /*
 const int colortex2Format = RGB32F;
 */
+#if SSAO != 0
 const vec3 aoKernel[] = vec3[](
-    vec3(0.069431655, 0.040512662, 0.059480842),
-    vec3(0.05884631, 0.0035979126, 0.08185793),
-    vec3(-0.074091464, -0.02866131, 0.06636617),
-    vec3(0.06360852, 0.06554057, 0.057471674),
-    vec3(0.04830485, -0.07395963, 0.072158635),
-    vec3(-0.03682454, 0.104013614, 0.051985096),
-    vec3(0.07220624, 0.06320196, 0.09011675),
-    vec3(0.0478162, -0.13414294, 0.013685009),
-    vec3(0.1267123, 0.08762908, 0.026061395),
-    vec3(-0.011465177, -0.17073913, 0.004816053),
-    vec3(0.123100154, 0.124983795, 0.06729256),
-    vec3(-0.07089526, -0.15086177, 0.12163032),
-    vec3(-0.13371174, -0.12891957, 0.12973621),
-    vec3(0.23262544, -0.055290237, 0.06780944),
-    vec3(0.022970699, 0.23253542, 0.13974331),
-    vec3(0.22677298, 0.004900441, 0.19289218),
-    vec3(-0.12767176, -0.27222365, 0.123366065),
-    vec3(0.26587808, -0.20422705, 0.11366146),
-    vec3(-0.12372873, -0.2571961, 0.2580425),
-    vec3(0.28893417, 0.039911225, 0.2984142),
-    vec3(-0.16237342, -0.3133139, 0.2817409),
-    vec3(0.26509774, 0.38389802, 0.14176378),
-    vec3(-0.41266912, -0.29397824, 0.13898318),
-    vec3(0.25083584, -0.20719247, 0.46185657),
-    vec3(-0.25281924, 0.50966007, 0.20944722),
-    vec3(0.32518202, -0.33133268, 0.45396826),
-    vec3(-0.5971795, -0.17293268, 0.30871043),
-    vec3(0.51756454, 0.52648634, 0.06007654),
-    vec3(-0.19645077, 0.45719165, 0.6123745),
-    vec3(0.6529396, 0.4847204, 0.20713681),
-    vec3(0.72675693, -0.131368, 0.49847344),
-    vec3(0.59863853, -0.54075235, 0.4914699)
-
-	// vec3(-0.034980517, -0.07308654, 0.058606513),
-	// vec3(0.03756984, -0.072102696, 0.0585978),
-	// vec3(0.06918004, 0.034017343, 0.065065324),
-	// vec3(-0.005725489, -0.017689845, 0.10026818),
-	// vec3(-0.0024451462, -0.10229702, 0.015646892),
-	// vec3(-0.031925168, -0.02320752, 0.09783151),
-	// vec3(-0.06793229, 0.05529296, 0.063027725),
-	// vec3(-0.01209211, 0.043860555, 0.10099145),
-	// vec3(0.10555697, 0.008753485, 0.042324428),
-	// vec3(0.081875466, -0.048372656, 0.069518544),
-	// vec3(-0.02898162, -0.0020893984, 0.11846109),
-	// vec3(-0.10734179, -0.038997177, 0.054600425),
-	// vec3(0.001121658, 0.10839674, 0.07468697),
-	// vec3(0.0382355, -0.13062601, 0.016750216),
-	// vec3(-0.10653227, -0.024923487, 0.09218294),
-	// vec3(0.020593332, -0.10940843, 0.09968734),
-	// vec3(0.10870629, -0.05270174, 0.09909357),
-	// vec3(-0.101664364, 0.07077516, 0.10671365),
-	// vec3(-0.09397825, -0.13871153, 0.03512405),
-	// vec3(-0.07309548, -0.010214948, 0.16342837),
-	// vec3(-0.13357458, -0.060898818, 0.11726911),
-	// vec3(-0.1812479, 0.0051940037, 0.07675678),
-	// vec3(-0.13638212, 0.09606439, 0.12145328),
-	// vec3(0.081188925, 0.14238939, 0.14103664),
-	// vec3(0.14691381, 0.08068207, 0.15243787),
-	// vec3(0.12507543, 0.09452677, 0.17817385),
-	// vec3(-0.029932378, -0.15652287, 0.19072066),
-	// vec3(0.16865447, -0.18223238, 0.07772384),
-	// vec3(0.18051505, 0.13493875, 0.15275605),
-	// vec3(-0.02180126, 0.22166462, 0.17746793),
-	// vec3(0.138826, 0.2622502, 0.024689237),
-	// vec3(0.15371771, 0.11623063, 0.2442952),
-	// vec3(0.13526349, 0.2697097, 0.12077029),
-	// vec3(0.1313422, 0.31269744, 0.009053342),
-	// vec3(-0.0022185133, 0.31079093, 0.16947818),
-	// vec3(-0.273788, -0.19623113, 0.15105066),
-	// vec3(-0.16376108, 0.298388, 0.17941986),
-	// vec3(-0.197984, -0.21250074, 0.27620816),
-	// vec3(0.32193616, 0.15964846, 0.21212348),
-	// vec3(-0.029422954, -0.3082821, 0.30435112),
-	// vec3(-0.112089105, 0.019694295, 0.4369861),
-	// vec3(-0.27036008, -0.37540528, 0.07921735),
-	// vec3(-0.44118622, -0.17253464, 0.115490176),
-	// vec3(0.3170158, 0.014442723, 0.39446947),
-	// vec3(-0.3384772, 0.34697533, 0.20267364),
-	// vec3(0.45703468, 0.06094783, 0.29046714),
-	// vec3(-0.37736368, -0.24280304, 0.34322315),
-	// vec3(-0.21585187, -0.4170773, 0.3494561),
-	// vec3(0.008988276, 0.3492018, 0.49549612),
-	// vec3(0.26397067, 0.3077667, 0.47899377),
-	// vec3(0.15404774, -0.57045406, 0.26918998),
-	// vec3(0.48351988, 0.40117705, 0.23704346),
-	// vec3(0.10314443, -0.6246343, 0.2846478),
-	// vec3(-0.10114718, -0.5171652, 0.48652062),
-	// vec3(-0.5003709, -0.24524792, 0.48800862),
-	// vec3(-0.54776156, -0.43065378, 0.3149907),
-	// vec3(0.1332165, -0.53897214, 0.56069785),
-	// vec3(-0.15972456, 0.39317474, 0.69449353),
-	// vec3(-0.688053, 0.18012664, 0.44533956),
-	// vec3(0.7846323, 0.08730391, 0.3531672),
-	// vec3(-0.6566118, 0.50826424, 0.32316768),
-	// vec3(-0.32328036, 0.2777686, 0.8126062),
-	// vec3(0.56942135, -0.6181151, 0.43129668),
-	// vec3(-0.84336746, -0.41986006, 0.2396183)
-);
-const vec2 shadowKernel[] = vec2[](
-    #ifndef HQ_Shadow_Filter
-	vec2(0., 0.),
-	vec2(1., 0.),
-	vec2(-1., 0.),
-	vec2(0.30901697, 0.95105654),
-	vec2(-0.30901664, -0.9510566),
-	vec2(0.54545456, 0),
-	vec2(0.16855472, 0.5187581),
-	vec2(-0.44128203, 0.3206101),
-	vec2(-0.44128197, -0.3206102),
-	vec2(0.1685548, -0.5187581),
-	vec2(0.809017, 0.58778524),
-	vec2(-0.30901703, 0.9510565),
-	vec2(-0.80901706, 0.5877852),
-	vec2(-0.80901694, -0.58778536),
-	vec2(0.30901712, -0.9510565),
-	vec2(0.80901694, -0.5877853)
-    
-    #else
-    vec2(0,0),
-	vec2(0.36363637,0),
-	vec2(0.22672357,0.28430238),
-	vec2(-0.08091671,0.35451925),
-	vec2(-0.32762504,0.15777594),
-	vec2(-0.32762504,-0.15777591),
-	vec2(-0.08091656,-0.35451928),
-	vec2(0.22672352,-0.2843024),
-	vec2(0.6818182,0),
-	vec2(0.614297,0.29582983),
-	vec2(0.42510667,0.5330669),
-	vec2(0.15171885,0.6647236),
-	vec2(-0.15171883,0.6647236),
-	vec2(-0.4251068,0.53306687),
-	vec2(-0.614297,0.29582986),
-	vec2(-0.6818182,0),
-	vec2(-0.614297,-0.29582983),
-	vec2(-0.42510656,-0.53306705),
-	vec2(-0.15171856,-0.66472363),
-	vec2(0.1517192,-0.6647235),
-	vec2(0.4251066,-0.53306705),
-	vec2(0.614297,-0.29582983),
-	vec2(1.,0),
-	vec2(0.9555728,0.2947552),
-	vec2(0.82623875,0.5633201),
-	vec2(0.6234898,0.7818315),
-	vec2(0.36534098,0.93087375),
-	vec2(0.07473,0.9972038),
-	vec2(-0.22252095,0.9749279),
-	vec2(-0.50000006,0.8660254),
-	vec2(-0.73305196,0.6801727),
-	vec2(-0.90096885,0.43388382),
-	vec2(-0.98883086,0.14904208),
-	vec2(-0.9888308,-0.14904249),
-	vec2(-0.90096885,-0.43388376),
-	vec2(-0.73305184,-0.6801728),
-	vec2(-0.4999999,-0.86602545),
-	vec2(-0.222521,-0.9749279),
-	vec2(0.07473029,-0.99720377),
-	vec2(0.36534148,-0.9308736),
-	vec2(0.6234897,-0.7818316),
-	vec2(0.8262388,-0.56332),
-	vec2(0.9555729,-0.29475483)
+    #if SSAO == 1
+        vec3(-0.040092375, -0.085082404, 0.033964507),
+        vec3(0.07686139, -0.005956394, 0.08406606),
+        vec3(-0.032883804, -0.1414308, 0.057706576),
+        vec3(-0.15006906, -0.14658183, 0.085578114),
+        vec3(0.03055816, -0.30500218, 0.10800393),
+        vec3(0.12736452, -0.12108572, 0.41596302),
+        vec3(-0.23230846, -0.52947176, 0.18229501),
+        vec3(0.31171134, 0.6173404, 0.3799296)
+    #elif SSAO == 2
+        vec3(0.06750871, 0.055483162, 0.048622973),
+        vec3(0.08817828, -0.0150950905, 0.052078906),
+        vec3(-0.08528654, 0.07219002, 0.022914235),
+        vec3(0.041928172, -0.08608985, 0.090331726),
+        vec3(0.14918147, 0.033809237, 0.031872965),
+        vec3(0.033643417, 0.034548324, 0.18159686),
+        vec3(0.07491968, 0.2003771, 0.074609786),
+        vec3(0.097285494, 0.19649309, 0.16141427),
+        vec3(-0.004644283, 0.2610817, 0.19349362),
+        vec3(-0.2724808, -0.27035496, 0.026589438),
+        vec3(0.22743785, -0.3504202, 0.17142457),
+        vec3(0.4234191, 0.28381643, 0.12727869),
+        vec3(0.31245655, -0.5187174, 0.02902149),
+        vec3(0.6513573, -0.21525997, 0.105962284),
+        vec3(0.6569041, -0.3880737, 0.20123476),
+        vec3(0.5024354, -0.29774883, 0.672914)
+    #elif SSAO == 3
+        vec3(0.069431655, 0.040512662, 0.059480842),
+        vec3(0.05884631, 0.0035979126, 0.08185793),
+        vec3(-0.074091464, -0.02866131, 0.06636617),
+        vec3(0.06360852, 0.06554057, 0.057471674),
+        vec3(0.04830485, -0.07395963, 0.072158635),
+        vec3(-0.03682454, 0.104013614, 0.051985096),
+        vec3(0.07220624, 0.06320196, 0.09011675),
+        vec3(0.0478162, -0.13414294, 0.013685009),
+        vec3(0.1267123, 0.08762908, 0.026061395),
+        vec3(-0.011465177, -0.17073913, 0.004816053),
+        vec3(0.123100154, 0.124983795, 0.06729256),
+        vec3(-0.07089526, -0.15086177, 0.12163032),
+        vec3(-0.13371174, -0.12891957, 0.12973621),
+        vec3(0.23262544, -0.055290237, 0.06780944),
+        vec3(0.022970699, 0.23253542, 0.13974331),
+        vec3(0.22677298, 0.004900441, 0.19289218),
+        vec3(-0.12767176, -0.27222365, 0.123366065),
+        vec3(0.26587808, -0.20422705, 0.11366146),
+        vec3(-0.12372873, -0.2571961, 0.2580425),
+        vec3(0.28893417, 0.039911225, 0.2984142),
+        vec3(-0.16237342, -0.3133139, 0.2817409),
+        vec3(0.26509774, 0.38389802, 0.14176378),
+        vec3(-0.41266912, -0.29397824, 0.13898318),
+        vec3(0.25083584, -0.20719247, 0.46185657),
+        vec3(-0.25281924, 0.50966007, 0.20944722),
+        vec3(0.32518202, -0.33133268, 0.45396826),
+        vec3(-0.5971795, -0.17293268, 0.30871043),
+        vec3(0.51756454, 0.52648634, 0.06007654),
+        vec3(-0.19645077, 0.45719165, 0.6123745),
+        vec3(0.6529396, 0.4847204, 0.20713681),
+        vec3(0.72675693, -0.131368, 0.49847344),
+        vec3(0.59863853, -0.54075235, 0.4914699)
+    #elif SSAO == 4
+        vec3(-0.034980517, -0.07308654, 0.058606513),
+        vec3(0.03756984, -0.072102696, 0.0585978),
+        vec3(0.06918004, 0.034017343, 0.065065324),
+        vec3(-0.005725489, -0.017689845, 0.10026818),
+        vec3(-0.0024451462, -0.10229702, 0.015646892),
+        vec3(-0.031925168, -0.02320752, 0.09783151),
+        vec3(-0.06793229, 0.05529296, 0.063027725),
+        vec3(-0.01209211, 0.043860555, 0.10099145),
+        vec3(0.10555697, 0.008753485, 0.042324428),
+        vec3(0.081875466, -0.048372656, 0.069518544),
+        vec3(-0.02898162, -0.0020893984, 0.11846109),
+        vec3(-0.10734179, -0.038997177, 0.054600425),
+        vec3(0.001121658, 0.10839674, 0.07468697),
+        vec3(0.0382355, -0.13062601, 0.016750216),
+        vec3(-0.10653227, -0.024923487, 0.09218294),
+        vec3(0.020593332, -0.10940843, 0.09968734),
+        vec3(0.10870629, -0.05270174, 0.09909357),
+        vec3(-0.101664364, 0.07077516, 0.10671365),
+        vec3(-0.09397825, -0.13871153, 0.03512405),
+        vec3(-0.07309548, -0.010214948, 0.16342837),
+        vec3(-0.13357458, -0.060898818, 0.11726911),
+        vec3(-0.1812479, 0.0051940037, 0.07675678),
+        vec3(-0.13638212, 0.09606439, 0.12145328),
+        vec3(0.081188925, 0.14238939, 0.14103664),
+        vec3(0.14691381, 0.08068207, 0.15243787),
+        vec3(0.12507543, 0.09452677, 0.17817385),
+        vec3(-0.029932378, -0.15652287, 0.19072066),
+        vec3(0.16865447, -0.18223238, 0.07772384),
+        vec3(0.18051505, 0.13493875, 0.15275605),
+        vec3(-0.02180126, 0.22166462, 0.17746793),
+        vec3(0.138826, 0.2622502, 0.024689237),
+        vec3(0.15371771, 0.11623063, 0.2442952),
+        vec3(0.13526349, 0.2697097, 0.12077029),
+        vec3(0.1313422, 0.31269744, 0.009053342),
+        vec3(-0.0022185133, 0.31079093, 0.16947818),
+        vec3(-0.273788, -0.19623113, 0.15105066),
+        vec3(-0.16376108, 0.298388, 0.17941986),
+        vec3(-0.197984, -0.21250074, 0.27620816),
+        vec3(0.32193616, 0.15964846, 0.21212348),
+        vec3(-0.029422954, -0.3082821, 0.30435112),
+        vec3(-0.112089105, 0.019694295, 0.4369861),
+        vec3(-0.27036008, -0.37540528, 0.07921735),
+        vec3(-0.44118622, -0.17253464, 0.115490176),
+        vec3(0.3170158, 0.014442723, 0.39446947),
+        vec3(-0.3384772, 0.34697533, 0.20267364),
+        vec3(0.45703468, 0.06094783, 0.29046714),
+        vec3(-0.37736368, -0.24280304, 0.34322315),
+        vec3(-0.21585187, -0.4170773, 0.3494561),
+        vec3(0.008988276, 0.3492018, 0.49549612),
+        vec3(0.26397067, 0.3077667, 0.47899377),
+        vec3(0.15404774, -0.57045406, 0.26918998),
+        vec3(0.48351988, 0.40117705, 0.23704346),
+        vec3(0.10314443, -0.6246343, 0.2846478),
+        vec3(-0.10114718, -0.5171652, 0.48652062),
+        vec3(-0.5003709, -0.24524792, 0.48800862),
+        vec3(-0.54776156, -0.43065378, 0.3149907),
+        vec3(0.1332165, -0.53897214, 0.56069785),
+        vec3(-0.15972456, 0.39317474, 0.69449353),
+        vec3(-0.688053, 0.18012664, 0.44533956),
+        vec3(0.7846323, 0.08730391, 0.3531672),
+        vec3(-0.6566118, 0.50826424, 0.32316768),
+        vec3(-0.32328036, 0.2777686, 0.8126062),
+        vec3(0.56942135, -0.6181151, 0.43129668),
+        vec3(-0.84336746, -0.41986006, 0.2396183)
     #endif
 );
+#endif
+
+#if Shadow_Filter != 0
+const vec2 shadowKernel[] = vec2[](
+    #if Shadow_Filter == 1
+        vec2(0., 0.),
+        vec2(1., 0.),
+        vec2(-1., 0.),
+        vec2(0.30901697, 0.95105654),
+        vec2(-0.30901664, -0.9510566),
+        vec2(0.54545456, 0),
+        vec2(0.16855472, 0.5187581),
+        vec2(-0.44128203, 0.3206101),
+        vec2(-0.44128197, -0.3206102),
+        vec2(0.1685548, -0.5187581),
+        vec2(0.809017, 0.58778524),
+        vec2(-0.30901703, 0.9510565),
+        vec2(-0.80901706, 0.5877852),
+        vec2(-0.80901694, -0.58778536),
+        vec2(0.30901712, -0.9510565),
+        vec2(0.80901694, -0.5877853)
+    #elif Shadow_Filter == 2
+        vec2(0,0),
+        vec2(0.36363637,0),
+        vec2(0.22672357,0.28430238),
+        vec2(-0.08091671,0.35451925),
+        vec2(-0.32762504,0.15777594),
+        vec2(-0.32762504,-0.15777591),
+        vec2(-0.08091656,-0.35451928),
+        vec2(0.22672352,-0.2843024),
+        vec2(0.6818182,0),
+        vec2(0.614297,0.29582983),
+        vec2(0.42510667,0.5330669),
+        vec2(0.15171885,0.6647236),
+        vec2(-0.15171883,0.6647236),
+        vec2(-0.4251068,0.53306687),
+        vec2(-0.614297,0.29582986),
+        vec2(-0.6818182,0),
+        vec2(-0.614297,-0.29582983),
+        vec2(-0.42510656,-0.53306705),
+        vec2(-0.15171856,-0.66472363),
+        vec2(0.1517192,-0.6647235),
+        vec2(0.4251066,-0.53306705),
+        vec2(0.614297,-0.29582983),
+        vec2(1.,0),
+        vec2(0.9555728,0.2947552),
+        vec2(0.82623875,0.5633201),
+        vec2(0.6234898,0.7818315),
+        vec2(0.36534098,0.93087375),
+        vec2(0.07473,0.9972038),
+        vec2(-0.22252095,0.9749279),
+        vec2(-0.50000006,0.8660254),
+        vec2(-0.73305196,0.6801727),
+        vec2(-0.90096885,0.43388382),
+        vec2(-0.98883086,0.14904208),
+        vec2(-0.9888308,-0.14904249),
+        vec2(-0.90096885,-0.43388376),
+        vec2(-0.73305184,-0.6801728),
+        vec2(-0.4999999,-0.86602545),
+        vec2(-0.222521,-0.9749279),
+        vec2(0.07473029,-0.99720377),
+        vec2(0.36534148,-0.9308736),
+        vec2(0.6234897,-0.7818316),
+        vec2(0.8262388,-0.56332),
+        vec2(0.9555729,-0.29475483)
+    #endif
+);
+#endif
 
 //euclidian distance is defined as sqrt(a^2 + b^2 + ...)
 //this length function instead does cbrt(a^3 + b^3 + ...)
@@ -235,16 +269,16 @@ float linearDepth(float depth) {
 
 vec3 fixedSunPosition() {
     //minecraft's native calculateCelestialAngle() function, ported to GLSL.
-		float ang = fract(worldTime / 24000.0 - 0.25);
-		ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
+    float ang = fract(worldTime / 24000.0 - 0.25);
+    ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
 
-		//this one tracks optifine's sunPosition uniform.
-		return mat3(gbufferModelView) * vec3(-sin(ang), cos(ang) * sunRotationData);
-		//this one tracks the center of the *actual* sun, which is ever-so-slightly different.
-		//sunPosNorm = normalize((gbufferModelView * vec4(sin(ang) * -100.0, (cos(ang) * 100.0) * sunRotationData, 1.0)).xyz);
-		//I choose to use the sunPosition one for 2 reasons:
-		//1: it's simpler.
-		//2: it's consistent with other programs which are sensitive to subtle differences.
+    //this one tracks optifine's sunPosition uniform.
+    return mat3(gbufferModelView) * vec3(-sin(ang), cos(ang) * sunRotationData);
+    //this one tracks the center of the *actual* sun, which is ever-so-slightly different.
+    //sunPosNorm = normalize((gbufferModelView * vec4(sin(ang) * -100.0, (cos(ang) * 100.0) * sunRotationData, 1.0)).xyz);
+    //I choose to use the sunPosition one for 2 reasons:
+    //1: it's simpler.
+    //2: it's consistent with other programs which are sensitive to subtle differences.
 }
 
 vec3 fixedLightPosition() {
@@ -265,12 +299,12 @@ float dayTimeFactor() {
 
 vec3 skyLightColor() {
     float timeFactor = dayTimeFactor();
-	return mix(mix(vec3(0.25, 0.25, 0.4), vec3(0.2), rainStrength), mix(mix(vec3(1.0, 0.6, 0.4), vec3(1.1, 1.1, 0.9), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), vec3(0.4), rainStrength), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
+	return mix(mix(vec3(0.06, 0.06, 0.14), vec3(0.08), rainStrength), mix(mix(vec3(1.0, 0.6, 0.4), vec3(1.5, 1.5, 1.2), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), vec3(0.3), rainStrength), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
 }
 
 float adjustLightmapTorch(float torch) {
-    const float K = 1.6f;
-    const float P = 2.8f;
+    const float K = 2.3f;
+    const float P = 3.3f;
     return K * pow(torch, P);
     // return pow(4 * pow(torch - 0.5, 3.0) + 0.5, 3.0);
 }
@@ -281,35 +315,43 @@ float adjustLightmapSky(float sky){
 }
 
 vec3 lightmapSky(float amount) {
-	return mix(vec3(0.1), skyLightColor(), adjustLightmapSky(amount));
+	return mix(vec3(0.03), skyLightColor(), adjustLightmapSky(amount));
 }
 
 vec3 lightmapTorch(float amount) {
-	return mix(vec3(0.0), vec3(3.0, 1.7, 0.7), adjustLightmapTorch(amount));
+	return mix(vec3(0.0), vec3(1.8, 1.0, 0.3), adjustLightmapTorch(amount));
 }
 
 vec3 calculateShadow(vec3 shadowPos, float NdotL, vec2 texcoord) {
-    vec3 shadowVal = vec3(0.0);
-	float randomAngle = texture2D(noisetex, texcoord * 20.0f).r * 100.0f;
-    float cosTheta = cos(randomAngle);
-    float sinTheta = sin(randomAngle);
-    mat2 rotation =  0.0006 * mat2(cosTheta, -sinTheta, sinTheta, cosTheta);
-	if(shadowPos.s == -1.0 || texture2D(shadowtex1, shadowPos.xy).r == 1.0) {
-		shadowVal = vec3(1.0);
-	}
-	else {
-		for(int i = 0; i < shadowKernel.length(); ++i) {
-			vec2 offset = Shadow_Blur_Amount * rotation * shadowKernel[i];
-			vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy + offset);
-			shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
-			float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy + offset).r);
-			float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy + offset).r);
-			shadowVal += mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
-		}
-		shadowVal /= shadowKernel.length();
-	}
+    #if Shadow_Filter > 0
+        vec3 shadowVal = vec3(0.0);
+        float randomAngle = texture2D(noisetex, texcoord * 20.0f).r * 100.0f;
+        float cosTheta = cos(randomAngle);
+        float sinTheta = sin(randomAngle);
+        mat2 rotation =  0.0006 * mat2(cosTheta, -sinTheta, sinTheta, cosTheta);
+        if(shadowPos.s == -1.0 || texture2D(shadowtex1, shadowPos.xy).r == 1.0) {
+            shadowVal = vec3(1.0);
+        }
+        else {
+            for(int i = 0; i < shadowKernel.length(); ++i) {
+                vec2 offset = Shadow_Blur_Amount * rotation * shadowKernel[i];
+                vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy + offset);
+                shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
+                float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy + offset).r);
+                float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy + offset).r);
+                shadowVal += mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
+            }
+            shadowVal /= shadowKernel.length();
+        }
 
-	return min(shadowVal, max(NdotL, 0.0));
+        return min(shadowVal, max(NdotL, 0.0));
+    #else
+        vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy);
+        shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
+        float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy).r);
+        float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy).r);
+        return mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
+    #endif
 }
 
 vec3 adjustLightMap(vec3 shadowVal, vec2 lmcoord) {
@@ -381,6 +423,8 @@ float GeometrySmith(vec3 normal, vec3 viewDir, vec3 lightDir, float roughness) {
 }
 
 vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
+    light *= mix(3.5, 1.0, rainStrength);
+    
     vec3 lightDir = normalize(shadowLightPosition);
     vec3 viewDir = getCameraVector(depth, texcoord);
     vec3 halfwayDir = normalize(viewDir + lightDir);
@@ -429,7 +473,7 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
         metalness = 1.0;
     }
     
-    float roughness = pow(1.0 - specMap.r, 2.0) * 0.99 + 0.01;
+    float roughness = max(pow(1.0 - specMap.r, 2.0), 0.02);
     roughness = mix(roughness, min(roughness, 0.03), wetness);
 
     float porosity = (specMap.b < 64.9 / 255.0) ? specMap.b * 2.0 : 0.0;
@@ -454,18 +498,20 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     float NdotL = max(dot(normal, lightDir), 0.0);
     vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
 
-    vec3 skyAmbient = lightmapSky(lmcoord.g) * (1.0 - Shadow_Darkness);
-    vec3 torchAmbient = lightmapTorch(lmcoord.r);
+    vec3 skyAmbient = lightmapSky(lmcoord.g);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(2.0 - skyAmbient.r, 0.0, 1.0);
+    skyAmbient *= 1.0 - Shadow_Darkness;
     // vec3 ambient = (length(skyAmbient) > length(torchAmbient) ? skyAmbient : torchAmbient) * albedo * material.g;
     vec3 ambient = (skyAmbient + torchAmbient) * albedo * material.g;
     vec3 color = ambient + Lo;
 
-    color = color / (color + vec3(1.0));
+    // color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2)); 
 
     return color;
 }
 
+#if SSAO != 0
 float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, sampler2D aoNoiseTex) {
     vec2 noiseCoord = vec2(mod(texcoord.x * viewWidth, 4.0) / 4.0, mod(texcoord.y * viewHeight, 4.0) / 4.0);
     vec3 rvec = vec3(texture2D(aoNoiseTex, noiseCoord).xy * 2.0 - 1.0, 0.0);
@@ -475,11 +521,10 @@ float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, samp
 	mat3 tbn = mat3(tangent, bitangent, normal);
 
     float occlusion = 0.0;
-	float radius = 1.0;
 	for (int i = 0; i < aoKernel.length(); ++i) {
 		// get sample position:
 		vec3 sample = tbn * aoKernel[i];
-		sample = sample * radius + fragPos;
+		sample = sample * SSAO_Radius + fragPos;
 		
 		// project sample position:
 		vec4 offset = vec4(sample, 1.0);
@@ -491,17 +536,18 @@ float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, samp
 		float sampleDepth = texture2D(viewTex, offset.xy).z;
 		
 		// range check & accumulate:
-		float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
-        // float rangeCheck= abs(fragPos.z - sampleDepth) < radius ? 1.0 : 0.0;
+		float rangeCheck = smoothstep(0.0, 1.0, SSAO_Radius / abs(fragPos.z - sampleDepth));
+        // float rangeCheck= abs(fragPos.z - sampleDepth) < SSAO_Radius ? 1.0 : 0.0;
 		occlusion += (sampleDepth >= sample.z ? 1.0 : 0.0) * rangeCheck;
 	}
 
 	return 1.0 - (occlusion / aoKernel.length());
 }
+#endif
 
 vec3 blendToFog(vec3 color, float depth) {
     if(isEyeInWater == 0)
-        return mix(color, fogColor, clamp((linearDepth(depth) + mix(-0.1, 0.05, rainStrength)) * mix(0.8, 2.5, rainStrength), 0.0, 1.0));
+        return mix(color, mix(vec3(.15), vec3(0.35), clamp(2.0 * (dayTimeFactor() + 0.4), 0.0, 1.0)), eyeBrightnessSmooth.g / 240.0 * clamp((linearDepth(depth) + mix(-0.1, 0.05, rainStrength)) * mix(0.8, 2.5, rainStrength), 0.0, 1.0));
     else if(isEyeInWater == 1)
         return mix(color, fogColor, linearDepth(depth));
     else
