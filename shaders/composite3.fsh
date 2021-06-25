@@ -8,7 +8,7 @@
 //#define distance_blur
 #define distance_blur_distance 0.0 //[0.0 0.05 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
 #define max_blur 0.2 //[0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
-#define water_blur
+// #define water_blur
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex3;

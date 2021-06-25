@@ -5,6 +5,7 @@
 #define Shadow_Blur_Amount 1.0 //Multiplier for the amount of blur at the edges of shadows. Lower values means less blur (harder edges). Higher values can help hide aliasing in shadows. [0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0]
 #define Shadow_Darkness 0.8 //The darkness of shadows in the world. 1.0 means shadows are completely pitch black. 0.0 means shadows have no effect on brightness (invisible). [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.85 0.9 0.95 1.0]
 #define Shadow_Filter 2 //Increases shadow sample count, improving quality at a slight performance cost. [0 1 2]
+#define Shadow_Transparent 2 //Controls how semi-transparent objects cast shadows. off: transparent objects don't cast shadows. opaque: transparent objects cast solid shadows. colored: transparent objects cast colored shadows based on their color and opacity. [0 1 2]
 
 #define water_wave //Causes water to displace and wave.
 #define leaves_wave //Causes leaves to russle and wave in the wind.
@@ -13,6 +14,8 @@
 
 #define SSAO 2 // Screen space ambient occlusion. Provides better shadows in corners and small spaces at performance cost. [0 1 2 3 4]
 #define SSAO_Radius 3.0 // Radius of SSAO. Higher values causes ao to be more spread out. Lower values will concentrate shadows more in corners. [0.5 0.75 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0]
+
+#define Bloom_Threshold 1.0 //Threshold for bloom, lower values mean more bloom on darker objects. [0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5]
 
 uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
@@ -319,7 +322,21 @@ vec3 lightmapSky(float amount) {
 }
 
 vec3 lightmapTorch(float amount) {
-	return mix(vec3(0.0), vec3(1.8, 1.0, 0.3), adjustLightmapTorch(amount));
+	return mix(vec3(0.0), vec3(1.8, 0.8, 0.15), adjustLightmapTorch(amount));
+}
+
+vec3 shadowVisibility(vec3 shadowPos) {
+    #if Shadow_Transparent == 0
+        return vec3(step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy).r));
+    #elif Shadow_Transparent == 1
+        return vec3(step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy).r));
+    #elif Shadow_Transparent == 2
+        vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy);
+        shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
+        float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy).r);
+        float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy).r);
+        return mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
+    #endif
 }
 
 vec3 calculateShadow(vec3 shadowPos, float NdotL, vec2 texcoord) {
@@ -335,30 +352,36 @@ vec3 calculateShadow(vec3 shadowPos, float NdotL, vec2 texcoord) {
         else {
             for(int i = 0; i < shadowKernel.length(); ++i) {
                 vec2 offset = Shadow_Blur_Amount * rotation * shadowKernel[i];
-                vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy + offset);
-                shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
-                float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy + offset).r);
-                float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy + offset).r);
-                shadowVal += mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
+                shadowVal += shadowVisibility(shadowPos + vec3(offset, 0.0));
             }
             shadowVal /= shadowKernel.length();
         }
 
         return min(shadowVal, max(NdotL, 0.0));
     #else
-        vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy);
-        shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
-        float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy).r);
-        float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy).r);
-        return mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
+        return shadowVisibility(shadowPos);
     #endif
 }
 
-vec3 adjustLightMap(vec3 shadowVal, vec2 lmcoord) {
-    vec3 skyLight = lightmapSky(lmcoord.g) * (shadowVal * Shadow_Darkness + (1.0 - Shadow_Darkness));
-	vec3 torchLight = lightmapTorch(lmcoord.r) * (1.1 - skyLight);
+vec3 adjustLightMap(vec2 lmcoord) {
+    // vec3 skyLight = lightmapSky(lmcoord.g) * (shadowVal * Shadow_Darkness + (1.0 - Shadow_Darkness));
+	// vec3 torchLight = lightmapTorch(lmcoord.r) * (1.1 - skyLight);
 
-	return skyLight + torchLight;
+	// return skyLight + torchLight;
+
+    vec3 skyAmbient = lightmapSky(lmcoord.g);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.9 - skyAmbient.r, 0.0, 1.0);
+    skyAmbient *= (1.0 - Shadow_Darkness);
+
+    return skyAmbient + torchAmbient;
+}
+
+vec3 adjustLightMapShadow(vec3 shadow, vec2 lmcoord) {
+    vec3 skyAmbient = lightmapSky(lmcoord.g);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.9 - skyAmbient.r, 0.0, 1.0);
+    skyAmbient *= shadow * Shadow_Darkness + (1.0 - Shadow_Darkness);
+
+    return skyAmbient + torchAmbient;
 }
 
 vec3 getCameraVector(float depth, vec2 texcoord) {
@@ -472,11 +495,11 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
         F0 = albedo;
         metalness = 1.0;
     }
-    
-    float roughness = max(pow(1.0 - specMap.r, 2.0), 0.02);
-    roughness = mix(roughness, min(roughness, 0.03), wetness);
 
     float porosity = (specMap.b < 64.9 / 255.0) ? specMap.b * 2.0 : 0.0;
+
+    float roughness = max(pow(1.0 - specMap.r, 2.0), 0.02);
+    roughness = mix(roughness, min(roughness, 0.03), wetness);
 
     // albedo = mix(albedo, (1.0 - porosity) * albedo, wetness);
     // albedo = pow(albedo, mix(vec3(1.0), vec3(1.0 + 10.0 * porosity), wetness));
@@ -498,11 +521,12 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
     float NdotL = max(dot(normal, lightDir), 0.0);
     vec3 Lo = (kD * albedo / PI + specular) * NdotL * light;
 
-    vec3 skyAmbient = lightmapSky(lmcoord.g);
-    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(2.0 - skyAmbient.r, 0.0, 1.0);
-    skyAmbient *= 1.0 - Shadow_Darkness;
+    /*vec3 skyAmbient = lightmapSky(lmcoord.g);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.9 - skyAmbient.r, 0.0, 1.0);
+    skyAmbient *= 1.0 - Shadow_Darkness;*/
     // vec3 ambient = (length(skyAmbient) > length(torchAmbient) ? skyAmbient : torchAmbient) * albedo * material.g;
-    vec3 ambient = (skyAmbient + torchAmbient) * albedo * material.g;
+    // vec3 ambient = (skyAmbient + torchAmbient) * albedo * material.g;
+    vec3 ambient = adjustLightMap(lmcoord.rg) * albedo * material.g;
     vec3 color = ambient + Lo;
 
     // color = color / (color + vec3(1.0));

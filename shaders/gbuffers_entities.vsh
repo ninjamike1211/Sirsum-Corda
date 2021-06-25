@@ -2,17 +2,26 @@
 
 #include "include.glsl"
 
+uniform int entityId;
+
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
 varying vec4 viewPos;
 varying mat3 tbn;
+varying float isLightning;
 
 attribute vec4 at_tangent;
 attribute vec4 mc_Entity;
 attribute vec2 mc_midTexCoord;
 
 void main() {
+	// islightning = float(entityId == 10101);
+	if(entityId == 10101)
+		isLightning = 1.0;
+	else
+		isLightning = 0.0;
+
 	texcoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
 	lmcoord  = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
 	glcolor = gl_Color;

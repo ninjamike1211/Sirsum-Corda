@@ -7,3 +7,7 @@ value.SSAO.4=ultra
 value.Shadow_Filter.0=off
 value.Shadow_Filter.1=low
 value.Shadow_Filter.2=high
+
+value.Shadow_Transparent.0=off
+value.Shadow_Transparent.1=opaque
+value.Shadow_Transparent.2=colored

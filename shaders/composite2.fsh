@@ -1,6 +1,7 @@
 #version 120
 
 //#define bloom
+#define Bloom_Amount 0.5 //Amount of bloom added. [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex8;
@@ -22,7 +23,7 @@ void main() {
 			color += texture2D(colortex8, texcoord - vec2(0.0, tex_offset.y * i)).rgb * weight[i];
 		}
 
-		color = texture2D(colortex0, texcoord).rgb + 0.5 * color;
+		color = texture2D(colortex0, texcoord).rgb + Bloom_Amount * color;
 
 		gl_FragData[0] = vec4(color, 1.0); //gcolor
 	#else

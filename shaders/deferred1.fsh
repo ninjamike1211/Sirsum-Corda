@@ -2,6 +2,8 @@
 
 #include "include.glsl"
 
+#define Shadow_On_Opaque
+
 uniform sampler2D colortex0; // Albedo
 uniform sampler2D colortex1; // Normal
 uniform sampler2D colortex2; // view space position
@@ -52,14 +54,18 @@ void main() {
 
 	float NdotL = dot(normal, normalize(shadowLightPosition));
 
-	vec4 playerPos = gbufferModelViewInverse * viewPos;
-	vec3 shadowPos = (shadowProjection * (shadowModelView * playerPos)).xyz; //convert to shadow screen space
-	float distortFactor = getDistortFactor(shadowPos.xy);
-	shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
-	shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
-	shadowPos.z -= Shadow_Bias * (distortFactor * distortFactor) / abs(NdotL); //apply shadow bias
+	#ifdef Shadow_On_Opaque
+		vec4 playerPos = gbufferModelViewInverse * viewPos;
+		vec3 shadowPos = (shadowProjection * (shadowModelView * playerPos)).xyz; //convert to shadow screen space
+		float distortFactor = getDistortFactor(shadowPos.xy);
+		shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
+		shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
+		shadowPos.z -= Shadow_Bias * (distortFactor * distortFactor) / abs(NdotL); //apply shadow bias
 
-	vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
+		vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
+	#else
+		vec3 shadow = vec3(max(NdotL, 0.0));
+	#endif
 	// vec3 specular = shadow * calcSpecular(normal, depth, specularMap, texcoord, 16.0);
 
 	// color *= min(adjustLightMap(shadow, lmcoord.rg), vec3(material.g)) + specular;
@@ -89,6 +95,7 @@ void main() {
 	// color = vec3(viewPos.z * -1.0);
 	// color = vec3(material.g);
 	// color = vec3(occlusion);
+	// color = texture2D(colortex0, texcoord).rgb;
 	// color = vec3(mod(texcoord.x * viewWidth, 16.0) / 16.0, mod(texcoord.y * viewHeight, 16.0) / 16.0, 0.0);
 	// color = vec3(dot(getCameraVector(depth, texcoord), normalize(-shadowLightPosition)));
 	// color = vec3(specularMap.g == 230.0/255.0);
@@ -106,5 +113,5 @@ void main() {
 	gl_FragData[0] = vec4(color, 1.0); //gcolor
 
 	float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
-	gl_FragData[1] = vec4((brightness > 1.1) ? color : texture2D(colortex8, texcoord).rgb, 1.0);
+	gl_FragData[1] = vec4((brightness > Bloom_Threshold) ? color : texture2D(colortex8, texcoord).rgb, 1.0);
 }
