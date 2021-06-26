@@ -72,8 +72,11 @@ void main() {
 	// color += specular;
 	// color *= material.g;
 
-	color = PBRLighting(texcoord, depth, color, normal, specularMap, vec3(material.r, occlusion, material.b), lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
-
+	#ifdef PBR_Lighting
+		color = PBRLighting(texcoord, depth, color, normal, specularMap, vec3(material.r, occlusion, material.b), lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+	#else
+		color *= adjustLightMapShadow(shadow, lmcoord.rg);
+	#endif
 	// color *= occlusion;
 
 	color = blendToFog(color, depth);

@@ -12,7 +12,7 @@ void main() {
 	vec4 color = texture2D(texture, texcoord) * glcolor;
 
 	if(isWater > 0.9)
-		gl_FragData[0] = vec4(color.rgb, 0.4);
+		gl_FragData[0] = vec4(1.0, 1.0, 1.0, 0.4);
 	else
 		gl_FragData[0] = color;
 }

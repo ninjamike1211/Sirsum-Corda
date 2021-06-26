@@ -17,6 +17,8 @@
 
 #define Bloom_Threshold 1.0 //Threshold for bloom, lower values mean more bloom on darker objects. [0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5]
 
+#define PBR_Lighting
+
 uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
 uniform sampler2D shadowcolor0;
@@ -300,14 +302,56 @@ float dayTimeFactor() {
     return sin(adjustedTime * PI / 13570.0);
 }
 
+vec3 getTopSkyColor(float time) {
+    vec3 color = mix(vec3(0.0, 0.01, 0.04), vec3(0.3, 0.5, 0.8), clamp(2.0 * (time + 0.4), 0.0, 1.0));
+    return mix(color, mix(vec3(0.2), vec3(0.45), clamp(2.0 * (time + 0.4), 0.0, 1.0)), rainStrength);
+}
+
+vec3 getBottomSkyColor(float time) {
+    vec3 color = mix(vec3(0.06, 0.07, 0.1), mix(vec3(0.75, 0.6, 0.5), vec3(0.6, 0.8, 1.0), clamp(5.0 * (time - 0.2), 0.0, 1.0)), clamp(2.0 * (time + 0.4), 0.0, 1.0));
+    return mix(color, mix(vec3(.15), vec3(0.35), clamp(2.0 * (time + 0.4), 0.0, 1.0)), rainStrength);
+}
+
+vec3 getSunColor(float time) {
+    vec3 color = mix(vec3(0.9, 0.4, 0.1), vec3(1.0, 0.6, 0.2), clamp(4.0 * (time + 0.05), 0.0, 1.0));
+    return mix(color, vec3(0.5, 0.45, 0.35), rainStrength);
+}
+
+vec3 getSunBlurColor(float time) {
+    vec3 color = mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), 1.0 - clamp(5.0 * (time - 0.2), 0.0, 1.0));
+    return mix(color, vec3(0.5), rainStrength);
+}
+
 vec3 skyLightColor() {
     float timeFactor = dayTimeFactor();
 	return mix(mix(vec3(0.06, 0.06, 0.14), vec3(0.08), rainStrength), mix(mix(vec3(1.0, 0.6, 0.4), vec3(1.5, 1.5, 1.2), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), vec3(0.3), rainStrength), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
 }
 
+float fogify(float x, float w) {
+	return w / (x * x + w);
+}
+
+vec3 getSkyColor(vec3 dir, vec3 topskycolor, vec3 bottomskycolor, vec3 suncolor, vec3 sunblurcolor, vec3 sunPos, vec3 upPos, float time) {
+    float upDot = dot(dir, upPos);
+    vec3 color = mix(topskycolor, bottomskycolor, fogify(max(upDot, 0.0), 0.1));
+
+    float sunDotV = max(dot(sunPos, dir), 0.0);
+    float sunBlur = smoothstep(0.996, 0.9975, sunDotV);
+    #ifdef OLD_SUN
+        sunBlur = 0.0;
+    #endif
+    float sunAmount = pow(sunDotV, 2.0);
+    sunAmount -= sunBlur;
+    sunAmount *= smoothstep(-0.3, -.16, time);
+    sunAmount *= 1.0 - clamp(5.0 * (time - 0.2), 0.0, 1.0);
+    sunAmount *= min(pow(1.0 - dot(dir, upPos), 3.0), 1.0);
+
+    return sunAmount * suncolor + sunBlur * sunblurcolor + max(1.0 - sunAmount - sunBlur, 0.0) * color;
+}
+
 float adjustLightmapTorch(float torch) {
     const float K = 2.3f;
-    const float P = 3.3f;
+    const float P = 3.7f;
     return K * pow(torch, P);
     // return pow(4 * pow(torch - 0.5, 3.0) + 0.5, 3.0);
 }
@@ -322,7 +366,7 @@ vec3 lightmapSky(float amount) {
 }
 
 vec3 lightmapTorch(float amount) {
-	return mix(vec3(0.0), vec3(1.8, 0.8, 0.15), adjustLightmapTorch(amount));
+	return mix(vec3(0.0), vec3(2.8, 1.1, 0.25), adjustLightmapTorch(amount));
 }
 
 vec3 shadowVisibility(vec3 shadowPos) {
@@ -370,7 +414,7 @@ vec3 adjustLightMap(vec2 lmcoord) {
 	// return skyLight + torchLight;
 
     vec3 skyAmbient = lightmapSky(lmcoord.g);
-    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.9 - skyAmbient.r, 0.0, 1.0);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.75 - skyAmbient.r, 0.0, 1.0);
     skyAmbient *= (1.0 - Shadow_Darkness);
 
     return skyAmbient + torchAmbient;

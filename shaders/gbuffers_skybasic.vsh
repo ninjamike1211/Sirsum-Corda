@@ -23,21 +23,26 @@ void main() {
 	starData = vec4(gl_Color.rgb, float(gl_Color.r == gl_Color.g && gl_Color.g == gl_Color.b && gl_Color.r > 0.0));
 
 	timeFactor = dayTimeFactor();
-	adjustedTimeFactor = sign(timeFactor) * sqrt(abs(timeFactor));
+	// adjustedTimeFactor = sign(timeFactor) * sqrt(abs(timeFactor));
 
-	topSkyColor = mix(vec3(0.0, 0.01, 0.04), vec3(0.3, 0.5, 0.8), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
-	topSkyColor = mix(topSkyColor, mix(vec3(0.2), vec3(0.45), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0)), rainStrength);
-	bottomSkyColor = mix(vec3(0.06, 0.07, 0.1), mix(vec3(0.75, 0.6, 0.5), vec3(0.6, 0.8, 1.0), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
-	bottomSkyColor = mix(bottomSkyColor, mix(vec3(.15), vec3(0.35), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0)), rainStrength);
+	// topSkyColor = mix(vec3(0.0, 0.01, 0.04), vec3(0.3, 0.5, 0.8), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
+	// topSkyColor = mix(topSkyColor, mix(vec3(0.2), vec3(0.45), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0)), rainStrength);
+	// bottomSkyColor = mix(vec3(0.06, 0.07, 0.1), mix(vec3(0.75, 0.6, 0.5), vec3(0.6, 0.8, 1.0), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
+	// bottomSkyColor = mix(bottomSkyColor, mix(vec3(.15), vec3(0.35), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0)), rainStrength);
 
-	// sunColor = mix(vec3(1.0, 0.65, 0.3), topSkyColor, max(adjustedTimeFactor, 0.0));
-	// sunColor = mix(mix(vec3(1.0, 0.55, 0.2), vec3(1.0, 0.6, 0.2), clamp(4.0 * (timeFactor + 0.05), 0.0, 1.0)), topSkyColor, clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0));
-	// sunColor = mix(vec3(1.0, 0.55, 0.2), topSkyColor, clamp(3.0 * (timeFactor - 0.2), 0.0, 1.0));
-	sunColor = mix(vec3(0.9, 0.4, 0.1), vec3(1.0, 0.6, 0.2), clamp(4.0 * (timeFactor + 0.05), 0.0, 1.0));
-	sunColor = mix(sunColor, vec3(0.5, 0.45, 0.35), rainStrength);
-	sunBlurColor = mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), 1.0 - clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0));
-	sunBlurColor = mix(sunBlurColor, vec3(0.5), rainStrength);
-	moonColor = max(vec3(0.15, 0.15, 0.25), topSkyColor);
+	// // sunColor = mix(vec3(1.0, 0.65, 0.3), topSkyColor, max(adjustedTimeFactor, 0.0));
+	// // sunColor = mix(mix(vec3(1.0, 0.55, 0.2), vec3(1.0, 0.6, 0.2), clamp(4.0 * (timeFactor + 0.05), 0.0, 1.0)), topSkyColor, clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0));
+	// // sunColor = mix(vec3(1.0, 0.55, 0.2), topSkyColor, clamp(3.0 * (timeFactor - 0.2), 0.0, 1.0));
+	// sunColor = mix(vec3(0.9, 0.4, 0.1), vec3(1.0, 0.6, 0.2), clamp(4.0 * (timeFactor + 0.05), 0.0, 1.0));
+	// sunColor = mix(sunColor, vec3(0.5, 0.45, 0.35), rainStrength);
+	// sunBlurColor = mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), 1.0 - clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0));
+	// sunBlurColor = mix(sunBlurColor, vec3(0.5), rainStrength);
+	// moonColor = max(vec3(0.15, 0.15, 0.25), topSkyColor);
+
+	topSkyColor = getTopSkyColor(timeFactor);
+	bottomSkyColor = getBottomSkyColor(timeFactor);
+	sunColor = getSunColor(timeFactor);
+	sunBlurColor = getSunBlurColor(timeFactor);
 
 	upPosition = mat3(gbufferModelView) * vec3(0.0, 1.0, 0.0);
 

@@ -7,6 +7,8 @@ varying vec2 lmcoord;
 varying vec4 glcolor;
 varying vec4 viewPos;
 varying mat3 tbn;
+varying vec2 horizontalPos;
+varying float blockType;
 
 attribute vec4 at_tangent;
 attribute vec4 mc_Entity;
@@ -17,10 +19,11 @@ void main() {
 	lmcoord  = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
 	glcolor = gl_Color;
 
-	float blockType = getBlockType(mc_Entity.x);
+	blockType = getBlockType(mc_Entity.x);
 	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0);
 	gl_Position = gl_ModelViewProjectionMatrix * vertexPos;
 	viewPos = gl_ModelViewMatrix * vertexPos;
+	horizontalPos = gl_Vertex.xz;
 
 	vec3 normal = gl_NormalMatrix * gl_Normal;
     vec3 tangent = normalize(gl_NormalMatrix * at_tangent.xyz);

@@ -10,7 +10,7 @@ uniform sampler2D colortex2; // View space position
 uniform sampler2D colortex3; // Light map
 uniform sampler2D colortex4; // Specular map
 uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
-uniform sampler2D colortex6; // 
+uniform sampler2D colortex6; // r = water
 uniform sampler2D colortex7; // Deferred output
 uniform sampler2D colortex8; // Bloom output
 uniform sampler2D depthtex0;
@@ -20,6 +20,14 @@ uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
 
 varying vec2 texcoord;
+varying vec3 sunColor;
+varying vec3 sunBlurColor;
+varying vec3 topSkyColor;
+varying vec3 bottomSkyColor;
+varying float timeFactor;
+varying vec3 sunPosNorm;
+varying vec3 moonPosNorm;
+varying vec3 upPosition;
 
 void main() {
 	vec3 deferredColor = texture2D(colortex7, texcoord).rgb;
@@ -37,7 +45,7 @@ void main() {
 		vec3 material = texture2D(colortex5, texcoord).rgb;
 
 		// Handle weather (and how it doesn't write to depth buffer)
-		if(lmcoord.b != 0.0) {
+		if(lmcoord.b > 0.0) {
 			depth = lmcoord.b;
 			waterColor.rgb *= adjustLightMapShadow(vec3(1.0), lmcoord.rg);
 		}
@@ -62,7 +70,17 @@ void main() {
 			// waterColor.rgb += specular;
 			// waterColor *= material.g;
 
-			waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap, material, lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+			if(texture2D(colortex6, texcoord).r > 0.0) {
+				vec3 reflectDir = reflectFromCamera(normal, depth, texcoord);
+				waterColor.rgb = getSkyColor(normalize(reflectDir), topSkyColor, bottomSkyColor, sunColor, sunBlurColor, sunPosNorm, upPosition, timeFactor);
+				deferredColor = mix(deferredColor, vec3(0.0, 0.05, 0.15), clamp(8.0 * (linearDepth(texture2D(depthtex1, texcoord).r) - linearDepth(depth)) + 0.2, 0.0, 1.0));
+			}
+
+			#ifdef PBR_Lighting
+				waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap, material, lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+			#else
+				waterColor.rgb *= adjustLightMapShadow(shadow, lmcoord.rg);
+			#endif
 		}
 
 		waterColor.rgb = blendToFog(waterColor.rgb, depth);
