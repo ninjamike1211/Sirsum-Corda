@@ -19,6 +19,9 @@
 
 #define PBR_Lighting
 
+// #define Old_Sky
+// #define Old_Sun
+
 uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
 uniform sampler2D shadowcolor0;
@@ -332,21 +335,26 @@ float fogify(float x, float w) {
 }
 
 vec3 getSkyColor(vec3 dir, vec3 topskycolor, vec3 bottomskycolor, vec3 suncolor, vec3 sunblurcolor, vec3 sunPos, vec3 upPos, float time) {
-    float upDot = dot(dir, upPos);
-    vec3 color = mix(topskycolor, bottomskycolor, fogify(max(upDot, 0.0), 0.1));
+    #ifdef Old_Sky
+        float upDot = dot(dir, upPos); //not much, what's up with you?
+	    return mix(skyColor, fogColor, fogify(max(upDot, 0.0), 0.25));
+    #else
+        float upDot = dot(dir, upPos);
+        vec3 color = mix(topskycolor, bottomskycolor, fogify(max(upDot, 0.0), 0.1));
 
-    float sunDotV = max(dot(sunPos, dir), 0.0);
-    float sunBlur = smoothstep(0.996, 0.9975, sunDotV);
-    #ifdef OLD_SUN
-        sunBlur = 0.0;
+        float sunDotV = max(dot(sunPos, dir), 0.0);
+        float sunBlur = smoothstep(0.996, 0.9975, sunDotV);
+        #ifdef Old_Sun
+            sunBlur = 0.0;
+        #endif
+        float sunAmount = pow(sunDotV, 2.0);
+        sunAmount -= sunBlur;
+        sunAmount *= smoothstep(-0.3, -.16, time);
+        sunAmount *= 1.0 - clamp(5.0 * (time - 0.2), 0.0, 1.0);
+        sunAmount *= min(pow(1.0 - dot(dir, upPos), 3.0), 1.0);
+
+        return sunAmount * suncolor + sunBlur * sunblurcolor + max(1.0 - sunAmount - sunBlur, 0.0) * color;
     #endif
-    float sunAmount = pow(sunDotV, 2.0);
-    sunAmount -= sunBlur;
-    sunAmount *= smoothstep(-0.3, -.16, time);
-    sunAmount *= 1.0 - clamp(5.0 * (time - 0.2), 0.0, 1.0);
-    sunAmount *= min(pow(1.0 - dot(dir, upPos), 3.0), 1.0);
-
-    return sunAmount * suncolor + sunBlur * sunblurcolor + max(1.0 - sunAmount - sunBlur, 0.0) * color;
 }
 
 float adjustLightmapTorch(float torch) {
@@ -367,6 +375,17 @@ vec3 lightmapSky(float amount) {
 
 vec3 lightmapTorch(float amount) {
 	return mix(vec3(0.0), vec3(2.8, 1.1, 0.25), adjustLightmapTorch(amount));
+}
+
+vec3 calcViewPos(vec2 texcoord, float depth) {
+    vec4 clipPos = vec4(texcoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	vec4 viewPos = gbufferProjectionInverse * clipPos;
+	return viewPos.xyz / viewPos.w;
+}
+
+vec3 calcViewPos(vec3 viewVector, float depth) {
+	float viewZ = -gbufferProjection[3][2] / ((depth * 2.0 - 1.0) + gbufferProjection[2][2]);
+	return viewVector * viewZ;
 }
 
 vec3 shadowVisibility(vec3 shadowPos) {
@@ -428,31 +447,6 @@ vec3 adjustLightMapShadow(vec3 shadow, vec2 lmcoord) {
     return skyAmbient + torchAmbient;
 }
 
-vec3 getCameraVector(float depth, vec2 texcoord) {
-    vec4 view = gbufferProjectionInverse * -vec4(texcoord * 2.0 - 1.0, linearDepth(depth), 1.0);
-    return normalize(view.xyz);
-}
-
-vec3 reflectFromCamera(vec3 norm, float depth, vec2 texcoord) {
-    vec3 viewDir = getCameraVector(depth, texcoord);
-    return -reflect(viewDir, norm);
-}
-
-// float calcSpecular(vec3 norm, float depth, vec3 material, vec2 texcoord, float power) {
-//     // vec3 reflectDir = reflectFromCamera(norm, depth, texcoord);
-//     // float mult = material.r * 1.5 + wetness * 0.2;
-//     // float spec = dot(normalize(shadowLightPosition), reflectDir);
-//     // spec = pow(spec, power) * mult;
-//     // return clamp(spec, 0.0, 1.0);
-
-//     vec3 lightDir = normalize(shadowLightPosition);
-//     vec3 viewDir = getCameraVector(depth, texcoord);
-//     vec3 halfwayDir = normalize(viewDir + lightDir);
-//     float mult = material.r * 1.5 + wetness * 0.2;
-//     return mult * pow(max(dot(norm, halfwayDir), 0.0), power);
-//     // return pow(PI, 0.0);
-// }
-
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
@@ -489,11 +483,11 @@ float GeometrySmith(vec3 normal, vec3 viewDir, vec3 lightDir, float roughness) {
     return ggx1 * ggx2;
 }
 
-vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
+vec3 PBRLighting(vec2 texcoord, vec3 viewDir, vec3 albedo, vec3 normal, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
     light *= mix(3.5, 1.0, rainStrength);
     
     vec3 lightDir = normalize(shadowLightPosition);
-    vec3 viewDir = getCameraVector(depth, texcoord);
+    // vec3 viewDir = getCameraVector(linearDepth, texcoord);
     vec3 halfwayDir = normalize(viewDir + lightDir);
 
     albedo = pow(albedo, vec3(2.2));
@@ -580,13 +574,15 @@ vec3 PBRLighting(vec2 texcoord, float depth, vec3 albedo, vec3 normal, vec3 spec
 }
 
 #if SSAO != 0
-float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, sampler2D aoNoiseTex) {
+float calcSSAO(vec3 normal, vec2 texcoord, sampler2D depthTex, sampler2D aoNoiseTex) {
     vec2 noiseCoord = vec2(mod(texcoord.x * viewWidth, 4.0) / 4.0, mod(texcoord.y * viewHeight, 4.0) / 4.0);
     vec3 rvec = vec3(texture2D(aoNoiseTex, noiseCoord).xy * 2.0 - 1.0, 0.0);
 	// vec3 rvec = vec3(1.0);
 	vec3 tangent = normalize(rvec - normal * dot(rvec, normal));
 	vec3 bitangent = cross(normal, tangent);
 	mat3 tbn = mat3(tangent, bitangent, normal);
+
+    vec3 fragPos = calcViewPos(texcoord, texture2D(depthTex, texcoord).r);
 
     float occlusion = 0.0;
 	for (int i = 0; i < aoKernel.length(); ++i) {
@@ -601,7 +597,7 @@ float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, samp
 		offset.xy = offset.xy * 0.5 + 0.5;
 		
 		// get sample depth:
-		float sampleDepth = texture2D(viewTex, offset.xy).z;
+		float sampleDepth = calcViewPos(offset.xy, texture2D(depthTex, offset.xy).r).z; // texture2D(viewTex, offset.xy).z;
 		
 		// range check & accumulate:
 		float rangeCheck = smoothstep(0.0, 1.0, SSAO_Radius / abs(fragPos.z - sampleDepth));
@@ -613,13 +609,43 @@ float calcSSAO(vec3 fragPos, vec3 normal, vec2 texcoord, sampler2D viewTex, samp
 }
 #endif
 
-vec3 blendToFog(vec3 color, float depth) {
+vec3 blendToFog(vec3 color, vec3 viewPos, vec3 skyFogColor) {
+    float distance = length(viewPos);
     if(isEyeInWater == 0)
-        return mix(color, mix(vec3(.15), vec3(0.35), clamp(2.0 * (dayTimeFactor() + 0.4), 0.0, 1.0)), eyeBrightnessSmooth.g / 240.0 * clamp((linearDepth(depth) + mix(-0.1, 0.05, rainStrength)) * mix(0.8, 2.5, rainStrength), 0.0, 1.0));
+        return mix(color, skyFogColor, eyeBrightnessSmooth.g / 240.0 * clamp((distance / far + mix(-0.1, 0.05, rainStrength)) * mix(0.8, 2.5, rainStrength), 0.0, 1.0));
+        // return mix(color, skyFogColor, eyeBrightnessSmooth.g / 240.0 * clamp(distance, 0.0, 1.0));
     else if(isEyeInWater == 1)
-        return mix(color, fogColor, linearDepth(depth));
+        return mix(color, 0.4 * fogColor, clamp(0.25 + 0.02 * distance, 0.0, 1.0));
     else
-        return mix(color, fogColor, linearDepth(depth));
+        return mix(color, vec3(0.85, 0.2, 0.0), clamp(0.5 + 0.08 * distance, 0.0, 1.0));
+}
+
+float getBlockType(in float entity) {
+    //Water
+    if(entity == 9.0)
+        return 0.1;
+    
+    //Lillypad
+    if(entity == 111.0)
+        return 0.5;
+
+    //Lava
+    if(entity == 11.0)
+        return 1.0;
+    
+    //Vines
+    if(entity == 106.0)
+        return 2.0;
+
+    //Grass
+    if(entity == 31.0 || entity == 37.0 || entity == 38.0 || entity == 59.0 || entity == 115.0 || entity == 141.0 || entity == 142.0)
+        return 3.0;
+    
+    //Leaves
+    if(entity == 161.0 || entity == 18.0)
+        return 4.0;
+
+    return -1.0;
 }
 
 vec3 waveOffset(float blockType, vec4 vertex, vec2 texcoord, vec2 mc_midTexCoord, vec3 normal) {
@@ -737,30 +763,170 @@ vec3 waveOffset(float blockType, vec4 vertex, vec2 texcoord, vec2 mc_midTexCoord
     return vec3(0.0);
 }
 
-float getBlockType(in float entity) {
-    //Water
-    if(entity == 9.0)
-        return 0.1;
-    
-    //Lillypad
-    if(entity == 111.0)
-        return 0.5;
+vec3 getNormal(in vec2 position, in float blockType/*, in vec2 mc_midTexCoord*/) {
 
-    //Lava
-    if(entity == 11.0)
-        return 1.0;
-    
-    //Vines
-    if(entity == 106.0)
-        return 2.0;
+    //return vec3(mod(frameTimeCounter, 1.0));
 
-    //Grass
-    if(entity == 31.0 || entity == 37.0 || entity == 38.0 || entity == 59.0 || entity == 115.0 || entity == 141.0 || entity == 142.0)
-        return 3.0;
-    
-    //Leaves
-    if(entity == 161.0 || entity == 18.0)
-        return 4.0;
+    if(blockType < 0.0)
+        return vec3(0.0, 0.0, 1.0);
 
-    return -1.0;
+    //return vec3(int(blockType+0.1) == 2);
+
+    // Water and lillypad wave
+    //#ifdef water_wave
+    if(blockType < 1.0) {
+        /*float offset = 0.04 * ((sin((position.x + frameTimeCounter) * PI * 0.375) + cos((position.y + frameTimeCounter) * PI * 0.25))
+                    * cos((position.x + frameTimeCounter) * PI * 0.5) + sin((position.y + frameTimeCounter) * PI * -0.375)) - (mc_Entity.x == 111.0f ? 0.08 : 0.0);
+
+        float offsetRain = 0.04 * ((sin((position.x + frameTimeCounter) * PI * 0.75) + cos((position.y + frameTimeCounter) * PI * 0.5))
+                    * cos((position.x + frameTimeCounter) * PI * 1.0) + sin((position.y + frameTimeCounter) * PI * -0.75)) - (mc_Entity.x == 111.0f ? 0.08 : 0.0);*/
+        
+        /*float partialX = 0.04 * (0.375 * PI * cos((position.x + frameTimeCounter) * 0.375 * PI) * cos((position.x + frameTimeCounter) * 0.5 * PI)
+                            + (sin((position.x + frameTimeCounter) * 0.375 * PI) + cos((position.y + frameTimeCounter) * 0.25 * PI))
+                            * -0.5 * PI * sin((position.x + frameTimeCounter) * 0.5 * PI));
+        
+        float partialZ = 0.04 * (-0.25 * PI * sin((position.y + frameTimeCounter) * 0.25 * PI) * cos((position.x + frameTimeCounter) * 0.5 * PI)
+                            - 0.375 * PI * cos((position.y + frameTimeCounter) * -0.375 * PI));
+        
+        float partialXRain = 0.04 * (0.75 * PI * cos((position.x + frameTimeCounter) * 0.75 * PI) * cos((position.x + frameTimeCounter) * PI)
+                            + (sin((position.x + frameTimeCounter) * 0.75 * PI) + cos((position.y + frameTimeCounter) * 0.5 * PI))
+                            * -1.0 * PI * sin((position.x + frameTimeCounter) * PI));
+        
+        float partialZRain = 0.04 * (-0.5 * PI * sin((position.y + frameTimeCounter) * 0.5 * PI) * cos((position.x + frameTimeCounter) * PI)
+                            - 0.75 * PI * cos((position.y + frameTimeCounter) * -0.75 * PI));*/
+
+        /*float offset = 0.1 * cos(.25 * PI * gl_Vertex.x + .125 * PI * gl_Vertex.z + 2.0 * frameTimeCounter)
+                        + 0.04 * sin(.75 * PI * gl_Vertex.x + .25 * PI * gl_Vertex.z + 3.0 * frameTimeCounter)
+                        + 0.005 * cos(1.5 * PI * gl_Vertex.x + PI * gl_Vertex.z + 4.0 * frameTimeCounter)
+                        - 0.2;*/
+        
+        float partialX = (-.015 * PI * sin(.25 * PI * position.x + .125 * PI * position.y + 2.0 * frameTimeCounter)
+                        + .03 * PI * cos(.75 * PI * position.x + .25 * PI * position.y + 3.0 * frameTimeCounter)
+                        - .0075 * PI * sin(1.5 * PI * position.x + PI * position.y + 4.0 * frameTimeCounter)
+                        + .003 * PI * cos(6.0 * PI * position.x + 2.0 * PI * position.y + 3.5 * frameTimeCounter))
+                        //* (0.5 + 0.5 * texture2D(noisetex, vec2(0.02 * PI * position.x + 0.1 * frameTimeCounter, 0.02 * PI * position.y + 0.05 * frameTimeCounter)).r)
+                        //+ .001 * PI * sin(-1.0 * PI * position.x - 2.8 * PI * position.y + 2.5 * frameTimeCounter)
+                        /*+ .05 * texture2D(noisetex, vec2(0.1 * PI * position.x + 0.05 * frameTimeCounter, 0.1 * PI * position.y + 0.12 * frameTimeCounter)).r
+                        + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.13 * frameTimeCounter, 0.1 * PI * position.y - 0.10 * frameTimeCounter)).r
+                        + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.17 * frameTimeCounter, 0.1 * PI * position.y + 0.06 * frameTimeCounter)).r
+                        + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x + 0.08 * frameTimeCounter, 0.1 * PI * position.y - 0.15 * frameTimeCounter)).r*/;
+
+        float partialZ = (-.0075 * PI * sin(.25 * PI * position.x + .125 * PI * position.y + 2.0 * frameTimeCounter)
+                        + .01 * PI * cos(.75 * PI * position.x + .25 * PI * position.y + 3.0 * frameTimeCounter)
+                        - .02 * PI * sin(1.5 * PI * position.x + PI * position.y + 4.0 *  frameTimeCounter)
+                        + .001 * PI * cos(6.0 * PI * position.x + 2.0 * PI * position.y + 3.5 * frameTimeCounter))
+                        //* (0.5 + 0.5 * texture2D(noisetex, vec2(0.02 * PI * position.x + 0.1 * frameTimeCounter, 0.02 * PI * position.y + 0.05 * frameTimeCounter)).r)
+                        //- .0028 * PI * sin(-1.0 * PI * position.x - 2.8 * PI * position.y + 2.5 * frameTimeCounter)
+                        /*+ .05 * texture2D(noisetex, vec2(0.1 * PI * position.x + 0.05 * frameTimeCounter, 0.1 * PI * position.y + 0.12 * frameTimeCounter)).r
+                        + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.13 * frameTimeCounter, 0.1 * PI * position.y - 0.10 * frameTimeCounter)).r
+                        + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.17 * frameTimeCounter, 0.1 * PI * position.y + 0.06 * frameTimeCounter)).r
+                        + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x + 0.08 * frameTimeCounter, 0.1 * PI * position.y - 0.15 * frameTimeCounter)).r*/;
+        
+        float partialXRain = -.015 * PI * sin(.25 * PI * position.x + .125 * PI * position.y + 6.0 * frameTimeCounter)
+                            + .03 * PI * cos(.75 * PI * position.x + .25 * PI * position.y + 9.0 * frameTimeCounter)
+                            - .0075 * PI * sin(1.5 * PI * position.x + PI * position.y + 12.0 * frameTimeCounter)
+                            + .003 * PI * cos(6.0 * PI * position.x + 2.0 * PI * position.y + 10.5 * frameTimeCounter); //+ .001 * PI * sin(-10.0 * PI * position.x + 28.0 * PI * position.y + 108.0 * frameTimeCounter)
+                            //+ 0.05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.3 * frameTimeCounter, 0.1 * PI * position.y - 0.3 * frameTimeCounter)).r;
+
+        float partialZRain = -.0075 * PI * sin(.25 * PI * position.x + .125 * PI * position.y + 6.0 * frameTimeCounter)
+                            + .01 * PI * cos(.75 * PI * position.x + .25 * PI * position.y + 9.0 * frameTimeCounter)
+                            - .02 * PI * sin(1.5 * PI * position.x + PI * position.y + 12.0 *  frameTimeCounter)
+                            + .001 * PI * cos(6.0 * PI * position.x + 2.0 * PI * position.y + 10.5 * frameTimeCounter); //+ .0028 * PI * sin(-10.0 * PI * position.x + 28.0 * PI * position.y + 108.0 * frameTimeCounter)
+                            //+ 0.05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.3 * frameTimeCounter, 0.1 * PI * position.y - 0.3 * frameTimeCounter)).r;
+
+        // Wave amplitudes
+        /*float a0 = mix(0.0, 0.05, texture2D(noisetex, vec2(0.5 + 0.0001 * frameTimeCounter, 0.3 + 0.0002 * frameTimeCounter)).r);
+        float a1 = mix(0.0, 0.05, texture2D(noisetex, vec2(0.6 + 0.0009 * frameTimeCounter, 0.4 + 0.0003 * frameTimeCounter)).r);
+        float a2 = mix(0.0, 0.05, texture2D(noisetex, vec2(0.2 + 0.0006 * frameTimeCounter, 0.7 + 0.0008 * frameTimeCounter)).r);
+        float a3 = mix(0.0, 0.05, texture2D(noisetex, vec2(0.9 + 0.0005 * frameTimeCounter, 0.8 + 0.0007 * frameTimeCounter)).r);
+
+        // Wave frequencies
+        float w0 = mix(2.0, 8.0, texture2D(noisetex, vec2(0.5 + 0.0001 * frameTimeCounter, 0.3 + 0.0002 * frameTimeCounter)).r);
+        float w1 = mix(2.0, 8.0, texture2D(noisetex, vec2(0.6 + 0.0009 * frameTimeCounter, 0.4 + 0.0003 * frameTimeCounter)).r);
+        float w2 = mix(2.0, 8.0, texture2D(noisetex, vec2(0.2 + 0.0006 * frameTimeCounter, 0.7 + 0.0008 * frameTimeCounter)).r);
+        float w3 = mix(2.0, 8.0, texture2D(noisetex, vec2(0.9 + 0.0005 * frameTimeCounter, 0.8 + 0.0007 * frameTimeCounter)).r);
+        
+
+        // Wave speeds
+        float s0 = w0 * mix(0.5, 1.5, texture2D(noisetex, vec2(0.5 + 0.0001 * frameTimeCounter, 0.3 + 0.0002 * frameTimeCounter)).r);
+        float s1 = w1 * mix(0.5, 1.5, texture2D(noisetex, vec2(0.6 + 0.0009 * frameTimeCounter, 0.4 + 0.0003 * frameTimeCounter)).r);
+        float s2 = w2 * mix(0.5, 1.5, texture2D(noisetex, vec2(0.2 + 0.0006 * frameTimeCounter, 0.7 + 0.0008 * frameTimeCounter)).r);
+        float s3 = w3 * mix(0.5, 1.5, texture2D(noisetex, vec2(0.9 + 0.0005 * frameTimeCounter, 0.8 + 0.0007 * frameTimeCounter)).r);
+
+        // Wave angles
+        float d0 = mix(0.0, 6.28318, texture2D(noisetex, vec2(0.5 + 0.0001 * frameTimeCounter, 0.3 + 0.0002 * frameTimeCounter)).r);
+        float d1 = mix(0.0, 6.28318, texture2D(noisetex, vec2(0.6 + 0.0009 * frameTimeCounter, 0.4 + 0.0003 * frameTimeCounter)).r);
+        float d2 = mix(0.0, 6.28318, texture2D(noisetex, vec2(0.2 + 0.0006 * frameTimeCounter, 0.7 + 0.0008 * frameTimeCounter)).r);
+        float d3 = mix(0.0, 6.28318, texture2D(noisetex, vec2(0.9 + 0.0005 * frameTimeCounter, 0.8 + 0.0007 * frameTimeCounter)).r);
+
+        // Wave direction vectors
+        vec2 D0 = vec2(cos(d0), sin(d0));
+        vec2 D1 = vec2(cos(d1), sin(d1));
+        vec2 D2 = vec2(cos(d2), sin(d2));
+        vec2 D3 = vec2(cos(d3), sin(d3));
+
+        float partialX =  a0 * D0.x * w0 * cos(dot(D0, position.xz) * w0 + frameTimeCounter * s0)
+                        + a1 * D1.x * w1 * cos(dot(D1, position.xz) * w1 + frameTimeCounter * s1)
+                        + a2 * D2.x * w2 * cos(dot(D2, position.xz) * w2 + frameTimeCounter * s2)
+                        + a3 * D3.x * w3 * cos(dot(D3, position.xz) * w3 + frameTimeCounter * s3);
+
+        float partialZ =  a0 * D0.y * w0 * cos(dot(D0, position.xz) * w0 + frameTimeCounter * s0)
+                        + a1 * D1.y * w1 * cos(dot(D1, position.xz) * w1 + frameTimeCounter * s1)
+                        + a2 * D2.y * w2 * cos(dot(D2, position.xz) * w2 + frameTimeCounter * s2)
+                        + a3 * D3.y * w3 * cos(dot(D3, position.xz) * w3 + frameTimeCounter * s3);
+        
+        float partialXRain = partialX;
+
+        float partialZRain = partialZ;*/
+
+
+        return normalize(mix(vec3(partialX, partialZ, 1.0), vec3(partialXRain, partialZRain, 1.0), rainStrength));
+    }
+
+    if(blockType < 2.0) {
+        /*float offset = 0.04 * ((sin((position.x + frameTimeCounter) * PI * 0.1875) + cos((position.y + frameTimeCounter) * PI * 0.125))
+                    * cos((position.x + frameTimeCounter) * PI * 0.25) + sin((position.y + frameTimeCounter) * PI * -0.1875));*/
+        
+        float partialX = 0.04 * (0.1875 * PI * cos((position.x + frameTimeCounter) * 0.1875 * PI) * cos((position.x + frameTimeCounter) * 0.25 * PI)
+                            + (sin((position.x + frameTimeCounter) * 0.1875 * PI) + cos((position.y + frameTimeCounter) * 0.125 * PI))
+                            * -0.25 * PI * sin((position.x + frameTimeCounter) * 0.25 * PI));
+        
+        float partialZ = 0.04 * (-0.25 * PI * sin((position.y + frameTimeCounter) * 0.125 * PI) * cos((position.x + frameTimeCounter) * 0.25 * PI)
+                            - 0.1875 * PI * cos((position.y + frameTimeCounter) * -0.1875 * PI));
+
+        return normalize(vec3(partialX, partialZ, 1.0));
+    }
+    //#endif
+
+    // Vines wave
+    //#ifdef vine_wave
+    if(blockType < 3.0) {
+        float tangent = 0.05 * mix(cos(position.y + frameTimeCounter * PI * 0.5), cos(position.y + frameTimeCounter * PI * 2.0), rainStrength);
+        float norm = -1.0 / tangent;
+        float theta = atan(abs(norm), normalize(norm));
+
+        //return vec3(1.0);
+
+        return vec3(0.0, sin(theta), cos(theta));
+    }
+    //#endif
+
+    // Grass and other plants wave
+    /*#ifdef grass_wave
+    if(mc_Entity.x == 31.0 || mc_Entity.x == 37.0f || mc_Entity.x == 38.0f || mc_Entity.x == 59.0f || mc_Entity.x == 115.0f || mc_Entity.x == 141.0f || mc_Entity.x == 142.0f) {
+        return float(texcoord.y < mc_midTexCoord.y) *
+                    vec3(   0.1 * (pow(sin(position.x + frameTimeCounter * PI * 0.25), 2.0) * mix(1.0, cos(position.x + frameTimeCounter * PI * 2.0), rainStrength) - 0.5), 
+                            0.0,
+                            0.1 * (pow(cos(position.y + frameTimeCounter * PI * 0.3), 2.0) * mix(1.0, sin(position.y + frameTimeCounter * PI * 2.0), rainStrength) - 0.5));
+    }
+    #endif*/
+
+    // Leaves wave
+    /*#ifdef leaves_wave
+    if(mc_Entity.x == 161.0f || mc_Entity.x == 18.0) {
+        return vec3(    mix(0.05, 0.08, rainStrength) * clamp((pow(sin((position.x + frameTimeCounter) * PI * 0.25), 2.0) - 0.5) * mix(1.0, cos(position.y + frameTimeCounter * PI * 2.0), rainStrength) - 0.5, -0.7, 0.7), 
+                        mix(0.05, 0.08, rainStrength) * clamp((pow(cos((position.y + frameTimeCounter) * PI * 0.125), 2.0) - 0.5) * mix(1.0, sin(position.x + frameTimeCounter * PI * 2.0), rainStrength) - 0.5, -0.7, 0.7),
+                        mix(0.05, 0.08, rainStrength) * clamp((pow(cos((position.y + frameTimeCounter) * PI * 0.25), 2.0) - 0.5) * mix(1.0, sin(position.y + frameTimeCounter * PI * 2.0), rainStrength) - 0.5, -0.7, 0.7));
+    }
+    #endif*/
 }

@@ -12,11 +12,10 @@ uniform sampler2D specular;
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
-varying vec4 viewPos;
 varying mat3 tbn;
 
 void main() {
-	/* DRAWBUFFERS:012345 */
+	/* DRAWBUFFERS:0123456 */
 	vec4 color = texture2D(texture, texcoord);
 	color.rgb *= glcolor.rgb;
 
@@ -33,10 +32,11 @@ void main() {
 		float height = 1.0;
 	#endif
 	gl_FragData[1] = vec4((bumpmap * tbn) * 0.5f + 0.5f, 1.0);
-	gl_FragData[2] = vec4(viewPos);
+	// gl_FragData[2] = vec4(viewPos);
 	gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
 	#ifdef MC_SPECULAR_MAP
         gl_FragData[4] = vec4(texture2D(specular, texcoord).rgb, 1.0);
     #endif
 	gl_FragData[5] = vec4(height, ao, 1.0, 1.0);
+	gl_FragData[6] = vec4(0.0, 0.0, 0.0, 1.0);
 }

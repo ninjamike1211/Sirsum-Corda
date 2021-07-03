@@ -3,6 +3,7 @@
 #include "include.glsl"
 
 varying vec2 texcoord;
+varying vec3 viewVector;
 varying vec3 sunColor;
 varying vec3 sunBlurColor;
 varying vec3 topSkyColor;
@@ -16,14 +17,17 @@ void main() {
 	gl_Position = ftransform();
 	texcoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
 
-	timeFactor = dayTimeFactor();
+	vec4 ray = gbufferProjectionInverse * vec4(texcoord * 2.0 - 1.0, 0.0, 1.0);
+	viewVector = (ray.xyz / ray.w);
+	viewVector /= viewVector.z;
 
-	topSkyColor = getTopSkyColor(timeFactor);
-	bottomSkyColor = getBottomSkyColor(timeFactor);
-	sunColor = getSunColor(timeFactor);
-	sunBlurColor = getSunBlurColor(timeFactor);
-
-	upPosition = mat3(gbufferModelView) * vec3(0.0, 1.0, 0.0);
-
-	sunPosNorm = fixedSunPosition();
+	#ifndef Old_Sky
+		timeFactor = dayTimeFactor();
+		topSkyColor = getTopSkyColor(timeFactor);
+		bottomSkyColor = getBottomSkyColor(timeFactor);
+		sunColor = getSunColor(timeFactor);
+		sunBlurColor = getSunBlurColor(timeFactor);
+		upPosition = mat3(gbufferModelView) * vec3(0.0, 1.0, 0.0);
+		sunPosNorm = fixedSunPosition();
+	#endif
 }

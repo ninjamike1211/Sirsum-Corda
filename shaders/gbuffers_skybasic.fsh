@@ -1,8 +1,5 @@
 #version 120
 
-// #define SKY_SPLIT_OLD_NEW
-#define OLD_SUN
-
 #include "include.glsl"
 
 uniform vec3 moonPosition;
@@ -20,14 +17,7 @@ varying vec3 upPosition;
 
 vec3 calcSkyColor(vec3 pos) {
 	float upDot = dot(pos, gbufferModelView[1].xyz); //not much, what's up with you?
-	#ifdef SKY_SPLIT_OLD_NEW
-	if(gl_FragCoord.x < 960)
-	#endif
-		return mix(topSkyColor, bottomSkyColor, fogify(max(upDot, 0.0), 0.1));
-	#ifdef SKY_SPLIT_OLD_NEW
-	else
-		return mix(skyColor, fogColor, fogify(max(upDot, 0.0), 0.25));
-	#endif
+	return mix(topSkyColor, bottomSkyColor, fogify(max(upDot, 0.0), 0.1));
 }
 
 void main() {
@@ -41,7 +31,7 @@ void main() {
 		color = getSkyColor(normalize(pos.xyz), topSkyColor, bottomSkyColor, sunColor, sunBlurColor, sunPosNorm, upPosition, timeFactor);
 	}
 
-/* DRAWBUFFERS:02 */
+/* DRAWBUFFERS:0 */
 	gl_FragData[0] = vec4(color, 1.0); //gcolor
-	gl_FragData[1] = vec4(0.0, 0.0, -9999999.0, 1.0); //gcolor
+	// gl_FragData[1] = vec4(0.0, 0.0, -9999999.0, 1.0); //gcolor
 }

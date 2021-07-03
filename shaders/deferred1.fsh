@@ -6,29 +6,31 @@
 
 uniform sampler2D colortex0; // Albedo
 uniform sampler2D colortex1; // Normal
-uniform sampler2D colortex2; // view space position
+uniform sampler2D colortex2; // TAA velocity
 uniform sampler2D colortex3; // Light map
 uniform sampler2D colortex4; // Specular map
 uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
 uniform sampler2D colortex6; // SSAO
 uniform sampler2D colortex7; // Deferred output
 uniform sampler2D colortex8; // Bloom output
-uniform sampler2D colortex9; // Native normal
 uniform sampler2D depthtex0;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
 
 varying vec2 texcoord;
+varying vec3 bottomSkyColor;
+varying vec3 viewVector;
 
 void main() {
-	float depth = texture2D(depthtex0, texcoord).r;
+	float depth = linearDepth(texture2D(depthtex0, texcoord).r);
 	vec3 color = texture2D(colortex0, texcoord).rgb;
 	vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
-	vec4 viewPos = texture2D(colortex2, texcoord);
 	vec4 lmcoord = texture2D(colortex3, texcoord);
 	vec3 specularMap = texture2D(colortex4, texcoord).rgb;
 	vec3 material = texture2D(colortex5, texcoord).rgb;
+
+	vec3 viewPos = calcViewPos(viewVector, texture2D(depthtex0, texcoord).r);
 
 	if(lmcoord.a == 0.0) {
 		gl_FragData[0] = vec4(color, 1.0);
@@ -55,7 +57,7 @@ void main() {
 	float NdotL = dot(normal, normalize(shadowLightPosition));
 
 	#ifdef Shadow_On_Opaque
-		vec4 playerPos = gbufferModelViewInverse * viewPos;
+		vec4 playerPos = gbufferModelViewInverse * vec4(viewPos, 1.0);
 		vec3 shadowPos = (shadowProjection * (shadowModelView * playerPos)).xyz; //convert to shadow screen space
 		float distortFactor = getDistortFactor(shadowPos.xy);
 		shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
@@ -73,13 +75,13 @@ void main() {
 	// color *= material.g;
 
 	#ifdef PBR_Lighting
-		color = PBRLighting(texcoord, depth, color, normal, specularMap, vec3(material.r, occlusion, material.b), lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+		color = PBRLighting(texcoord, normalize(viewVector), color, normal, specularMap, vec3(material.r, occlusion, material.b), lightmapSky(lmcoord.g) * shadow * occlusion, lmcoord.rg);
 	#else
 		color *= adjustLightMapShadow(shadow, lmcoord.rg);
 	#endif
 	// color *= occlusion;
 
-	color = blendToFog(color, depth);
+	color = blendToFog(color, viewPos.xyz, bottomSkyColor);
 
 	// color = texture2D(shadowtex0, texcoord).rgb;
 	// color = texture2D(shadowtex0, shadowPos.xy).rgb;
@@ -87,14 +89,17 @@ void main() {
 	// color = vec3(shadowPos.z);
 	// color = vec3(shadowPos.z - shadowDepth);
 	// color = shadowPos.xyz;
-	// color = vec3(shadow);
+	// color = shadow;
 	// color = normal;
 	// color = vec3(lmcoord.rg, 0.0);
 	// color = lmcoord.rgb;
 	// color = specularMap;
 	// color = material;
 	// color = shadow;
-	// color = viewPos.xyz;
+	// color = normalize(viewVector);
+	// color = getCameraVector(depth, texcoord);
+	// color = viewPos;
+	// color = vec3(abs(viewZ));
 	// color = vec3(viewPos.z * -1.0);
 	// color = vec3(material.g);
 	// color = vec3(occlusion);

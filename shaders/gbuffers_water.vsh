@@ -5,7 +5,6 @@
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
-varying vec4 viewPos;
 varying mat3 tbn;
 varying vec2 horizontalPos;
 varying float blockType;
@@ -22,7 +21,6 @@ void main() {
 	blockType = getBlockType(mc_Entity.x);
 	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0);
 	gl_Position = gl_ModelViewProjectionMatrix * vertexPos;
-	viewPos = gl_ModelViewMatrix * vertexPos;
 	horizontalPos = gl_Vertex.xz;
 
 	vec3 normal = gl_NormalMatrix * gl_Normal;

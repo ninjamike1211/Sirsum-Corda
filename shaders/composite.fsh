@@ -6,7 +6,7 @@
 
 uniform sampler2D colortex0; // Albedo
 uniform sampler2D colortex1; // Normal
-uniform sampler2D colortex2; // View space position
+uniform sampler2D colortex2; // TAA velocity
 uniform sampler2D colortex3; // Light map
 uniform sampler2D colortex4; // Specular map
 uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
@@ -20,6 +20,7 @@ uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
 
 varying vec2 texcoord;
+varying vec3 viewVector;
 varying vec3 sunColor;
 varying vec3 sunBlurColor;
 varying vec3 topSkyColor;
@@ -37,23 +38,24 @@ void main() {
 
 	if(waterColor.a > 0.0) {
 	// if(false) {
-		float depth = texture2D(depthtex0, texcoord).r;
+		float depth = linearDepth(texture2D(depthtex0, texcoord).r);
 		vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
-		vec4 viewPos = texture2D(colortex2, texcoord);
 		vec4 lmcoord = texture2D(colortex3, texcoord);
 		vec3 specularMap = texture2D(colortex4, texcoord).rgb;
 		vec3 material = texture2D(colortex5, texcoord).rgb;
 
+		vec3 viewPos = calcViewPos(viewVector, texture2D(depthtex0, texcoord).r);
+
 		// Handle weather (and how it doesn't write to depth buffer)
 		if(lmcoord.b > 0.0) {
-			depth = lmcoord.b;
+			depth = linearDepth(lmcoord.b);
 			waterColor.rgb *= adjustLightMapShadow(vec3(1.0), lmcoord.rg);
 		}
 		else {
 			float NdotL = dot(normal, normalize(shadowLightPosition));
 
 			#ifdef Shadow_On_Transparent
-				vec4 playerPos = gbufferModelViewInverse * viewPos;
+				vec4 playerPos = gbufferModelViewInverse * vec4(viewPos, 1.0);
 				vec3 shadowPos = (shadowProjection * (shadowModelView * playerPos)).xyz; //convert to shadow screen space
 				float distortFactor = getDistortFactor(shadowPos.xy);
 				shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
@@ -71,19 +73,22 @@ void main() {
 			// waterColor *= material.g;
 
 			if(texture2D(colortex6, texcoord).r > 0.0) {
-				vec3 reflectDir = reflectFromCamera(normal, depth, texcoord);
-				waterColor.rgb = getSkyColor(normalize(reflectDir), topSkyColor, bottomSkyColor, sunColor, sunBlurColor, sunPosNorm, upPosition, timeFactor);
-				deferredColor = mix(deferredColor, vec3(0.0, 0.05, 0.15), clamp(8.0 * (linearDepth(texture2D(depthtex1, texcoord).r) - linearDepth(depth)) + 0.2, 0.0, 1.0));
+				vec3 reflectDir = -reflect(normalize(viewVector), normal);
+				waterColor.rgb *= getSkyColor(normalize(reflectDir), topSkyColor, bottomSkyColor, sunColor, sunBlurColor, sunPosNorm, upPosition, timeFactor);
+				// deferredColor = mix(deferredColor, vec3(0.0, 0.05, 0.15), clamp(8.0 * (linearDepth(texture2D(depthtex1, texcoord).r) - depth) + 0.2, 0.0, 1.0));
+				// deferredColor = waterColor.rgb;
 			}
 
 			#ifdef PBR_Lighting
-				waterColor.rgb = PBRLighting(texcoord, depth, waterColor.rgb, normal, specularMap, material, lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
+				waterColor.rgb = PBRLighting(texcoord, normalize(viewVector), waterColor.rgb, normal, specularMap, material, lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
 			#else
 				waterColor.rgb *= adjustLightMapShadow(shadow, lmcoord.rg);
 			#endif
+
+			waterColor.rgb = blendToFog(waterColor.rgb, viewPos, bottomSkyColor);
 		}
 
-		waterColor.rgb = blendToFog(waterColor.rgb, depth);
+		// waterColor.rgb = blendToFog(waterColor.rgb, viewPos.xyz, bottomSkyColor);
 
 		color = mix(deferredColor, waterColor.rgb, waterColor.a);
 		// vec3 color = deferredColor;

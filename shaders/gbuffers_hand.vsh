@@ -5,10 +5,11 @@
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
-varying vec4 viewPos;
+varying vec3 velocity;
 varying mat3 tbn;
 
 attribute vec4 at_tangent;
+attribute vec3 at_velocity;
 attribute vec4 mc_Entity;
 attribute vec2 mc_midTexCoord;
 
@@ -16,10 +17,10 @@ void main() {
 	texcoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
 	lmcoord  = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
 	glcolor = gl_Color;
+	velocity = at_velocity;
 
 	float blockType = getBlockType(mc_Entity.x);
 	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-	viewPos = gl_ModelViewMatrix * gl_Vertex;
 
 	vec3 normal = gl_NormalMatrix * gl_Normal;
     vec3 tangent = normalize(gl_NormalMatrix * at_tangent.xyz);

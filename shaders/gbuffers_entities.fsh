@@ -12,7 +12,7 @@ uniform sampler2D specular;
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
-varying vec4 viewPos;
+varying vec3 velocity;
 varying mat3 tbn;
 varying float isLightning;
 
@@ -21,7 +21,7 @@ void main() {
 	if(isLightning > 0.9) {
 		gl_FragData[0] = glcolor;
 		gl_FragData[1] = vec4((vec3(0.0, 0.0, 1.0) * tbn) * 0.5f + 0.5f, 1.0);
-		gl_FragData[2] = viewPos;
+		gl_FragData[2] = vec4(velocity, 1.0);
 		gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
 		gl_FragData[4] = vec4(0.0, 0.0, 0.0, 1.0);
 		gl_FragData[5] = vec4(1.0, 1.0, 0.0, 1.0);
@@ -43,7 +43,7 @@ void main() {
 			float height = 1.0;
 		#endif
 		gl_FragData[1] = vec4((bumpmap * tbn) * 0.5f + 0.5f, 1.0);
-		gl_FragData[2] = vec4(viewPos);
+		gl_FragData[2] = vec4(velocity, 1.0);
 		gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
 		#ifdef MC_SPECULAR_MAP
 			gl_FragData[4] = vec4(texture2D(specular, texcoord).rgb, 1.0);

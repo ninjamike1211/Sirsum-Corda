@@ -13,7 +13,6 @@ varying vec2 lmcoord;
 varying vec2 texcoord;
 varying vec4 glcolor;
 varying vec3 normal;
-varying vec4 viewPos;
 
 void main() {
 	/* DRAWBUFFERS:012345 */
@@ -22,7 +21,7 @@ void main() {
 
 	gl_FragData[0] = color; //gcolor
 	gl_FragData[1] = vec4(normal * 0.5f + 0.5f, 1.0);
-	gl_FragData[2] = vec4(viewPos);
+	// gl_FragData[2] = vec4(viewPos);
 	gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
 	#ifdef MC_SPECULAR_MAP
         gl_FragData[4] = vec4(texture2D(specular, texcoord).rgb, 1.0);
