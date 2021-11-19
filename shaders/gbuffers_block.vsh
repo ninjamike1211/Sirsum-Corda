@@ -2,6 +2,8 @@
 
 #include "include.glsl"
 
+uniform vec3 cameraPosition;
+
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
@@ -20,7 +22,7 @@ void main() {
 	velocity = at_velocity;
 
 	float blockType = getBlockType(mc_Entity.x);
-	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0);
+	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex.xyz + cameraPosition, texcoord, mc_midTexCoord, gl_Normal), 0.0);
 	gl_Position = gl_ModelViewProjectionMatrix * vertexPos;
 	
 	vec3 normal = gl_NormalMatrix * gl_Normal;

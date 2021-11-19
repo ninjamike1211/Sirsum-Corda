@@ -1,17 +1,9 @@
 #version 120
 
-#include "include.glsl"
+uniform mat4 gbufferProjectionInverse;
 
-varying vec2 texcoord;
 varying vec3 viewVector;
-varying vec3 sunColor;
-varying vec3 sunBlurColor;
-varying vec3 topSkyColor;
-varying vec3 bottomSkyColor;
-varying float timeFactor;
-varying vec3 sunPosNorm;
-varying vec3 moonPosNorm;
-varying vec3 upPosition;
+varying vec2 texcoord;
 
 void main() {
 	gl_Position = ftransform();
@@ -20,14 +12,4 @@ void main() {
 	vec4 ray = gbufferProjectionInverse * vec4(texcoord * 2.0 - 1.0, 0.0, 1.0);
 	viewVector = (ray.xyz / ray.w);
 	viewVector /= viewVector.z;
-
-	#ifndef Old_Sky
-		timeFactor = dayTimeFactor();
-		topSkyColor = getTopSkyColor(timeFactor);
-		bottomSkyColor = getBottomSkyColor(timeFactor);
-		sunColor = getSunColor(timeFactor);
-		sunBlurColor = getSunBlurColor(timeFactor);
-		upPosition = mat3(gbufferModelView) * vec3(0.0, 1.0, 0.0);
-		sunPosNorm = fixedSunPosition();
-	#endif
 }

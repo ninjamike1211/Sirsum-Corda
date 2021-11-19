@@ -4,15 +4,16 @@
 
 #define Shadow_On_Opaque
 
-uniform sampler2D colortex0; // Albedo
-uniform sampler2D colortex1; // Normal
-uniform sampler2D colortex2; // TAA velocity
-uniform sampler2D colortex3; // Light map
-uniform sampler2D colortex4; // Specular map
-uniform sampler2D colortex5; // r = height map, g = ao, b = Hand
-uniform sampler2D colortex6; // SSAO
-uniform sampler2D colortex7; // Deferred output
-uniform sampler2D colortex8; // Bloom output
+uniform sampler2D colortex0;	// Albedo
+uniform sampler2D colortex1;	// Normal
+uniform sampler2D colortex2;	// Geometry normal
+uniform sampler2D colortex3;	// Light map
+uniform sampler2D colortex4;	// Specular map
+uniform sampler2D colortex5;	// r = height map, g = ao, b = Hand
+uniform sampler2D colortex6;	// SSAO
+// uniform sampler2D colortex7;	// Deferred output
+uniform sampler2D colortex8;	// Bloom output
+// uniform sampler2D colortex9;	// TAA velocity
 uniform sampler2D depthtex0;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 shadowModelView;
@@ -21,39 +22,66 @@ uniform mat4 shadowProjection;
 varying vec2 texcoord;
 varying vec3 bottomSkyColor;
 varying vec3 viewVector;
+varying vec3 sunPosNorm;
 
 void main() {
-	float depth = linearDepth(texture2D(depthtex0, texcoord).r);
+/* RENDERTARGETS: 7,8,12 */
+
+// ---------------------------- Read buffers -------------------------------
 	vec3 color = texture2D(colortex0, texcoord).rgb;
-	vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
 	vec4 lmcoord = texture2D(colortex3, texcoord);
-	vec3 specularMap = texture2D(colortex4, texcoord).rgb;
-	vec3 material = texture2D(colortex5, texcoord).rgb;
 
-	vec3 viewPos = calcViewPos(viewVector, texture2D(depthtex0, texcoord).r);
-
+	// Ignore sky
 	if(lmcoord.a == 0.0) {
 		gl_FragData[0] = vec4(color, 1.0);
 		return;
 	}
 
-	#if SSAO != 0
-		vec2 texelSize = 1.0 / vec2(viewWidth, viewHeight);
-		float occlusion = 0.0;
-		for (int x = -2; x < 2; ++x) 
-		{
-			for (int y = -2; y < 2; ++y) 
-			{
-				vec2 offset = vec2(float(x), float(y)) * texelSize;
-				occlusion += texture2D(colortex6, texcoord + offset).r;
-			}
-		}
-		occlusion /= 16.0;
+	// Decode normal buffers
+	#ifdef Combine_Normal_Buffers
+		vec3 normal = normalize(decodeNormal(texture2D(colortex1, texcoord).rg));
+		vec3 geometryNorm = decodeNormal(texture2D(colortex1, texcoord).ba);
 	#else
+		vec3 normal = normalize(texture2D(colortex1, texcoord).xyz * 2.0 - 1.0);
+		vec3 geometryNorm = normalize(texture2D(colortex2, texcoord).xyz * 2.0 - 1.0);
+	#endif
+
+	float depth = texture2D(depthtex0, texcoord).r;
+	vec3 specularMap = texture2D(colortex4, texcoord).rgb;
+	vec3 material = texture2D(colortex5, texcoord).rgb;
+
+	vec3 viewPos = calcViewPos(viewVector, depth);
+
+
+// ---------------------------- SSAO -------------------------------
+	#if SSAO == 1 || SSAO == 3
+		float occlusion = 0.0;
+		if(length(texture2D(colortex2, texcoord).xyz * 2.0 - 1.0) > 0.9) {
+			vec2 texelSize = 1.0 / vec2(viewWidth, viewHeight);
+			for (int x = -2; x < 2; ++x) 
+			{
+				for (int y = -2; y < 2; ++y) 
+				{
+					vec2 offset = vec2(float(x), float(y)) * texelSize;
+					occlusion += texture2D(colortex6, texcoord + offset).g;
+				}
+			}
+			occlusion /= 16.0;
+
+			// occlusion = min(occlusion, texture2D(colortex5, texcoord).g);
+			occlusion = min(occlusion, 1.0 - (SSAO_Strength * (1.0 - texture2D(colortex5, texcoord).g)));
+		}
+		else {
+			occlusion = 1.0;
+		}
+	#elif SSAO == 0
 		float occlusion = material.g;
+	#else
+		float occlusion = texture2D(colortex5, texcoord).g;
 	#endif
 
 
+// ---------------------------- Shadows -------------------------------
 	float NdotL = dot(normal, normalize(shadowLightPosition));
 
 	#ifdef Shadow_On_Opaque
@@ -62,64 +90,28 @@ void main() {
 		float distortFactor = getDistortFactor(shadowPos.xy);
 		shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
 		shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
-		shadowPos.z -= Shadow_Bias * (distortFactor * distortFactor) / abs(NdotL); //apply shadow bias
+		shadowPos.z -= Shadow_Bias * (distortFactor * distortFactor) / abs(dot(geometryNorm, normalize(shadowLightPosition))); //apply shadow bias
 
-		vec3 shadow = calculateShadow(shadowPos, NdotL, texcoord);
+		vec3 shadow = calculateShadow(shadowPos, texcoord);
+		shadow = min(shadow, max(NdotL, 0.0));
+
 	#else
 		vec3 shadow = vec3(max(NdotL, 0.0));
 	#endif
-	// vec3 specular = shadow * calcSpecular(normal, depth, specularMap, texcoord, 16.0);
 
-	// color *= min(adjustLightMap(shadow, lmcoord.rg), vec3(material.g)) + specular;
-	// color += specular;
-	// color *= material.g;
 
+// ---------------------------- PBR lighting -------------------------------
 	#ifdef PBR_Lighting
-		color = PBRLighting(texcoord, normalize(viewVector), color, normal, specularMap, vec3(material.r, occlusion, material.b), lightmapSky(lmcoord.g) * shadow * occlusion, lmcoord.rg);
+		gl_FragData[2] = vec4(pbrSpecular(normalize(viewVector), color, normal, normalize(shadowLightPosition), specularMap, lightmapSky(lmcoord.g) * shadow), 1.0);
+		color = pbrDiffuse(normalize(viewVector), color, normal, normalize(shadowLightPosition), specularMap, vec3(material.r, 1.0, material.b), lightmapSky(lmcoord.g) * shadow, lmcoord.rg);
 	#else
 		color *= adjustLightMapShadow(shadow, lmcoord.rg);
 	#endif
-	// color *= occlusion;
 
-	color = blendToFog(color, viewPos.xyz, bottomSkyColor);
 
-	// color = texture2D(shadowtex0, texcoord).rgb;
-	// color = texture2D(shadowtex0, shadowPos.xy).rgb;
-	// color = vec3(linearDepth(depth));
-	// color = vec3(shadowPos.z);
-	// color = vec3(shadowPos.z - shadowDepth);
-	// color = shadowPos.xyz;
-	// color = shadow;
-	// color = normal;
-	// color = vec3(lmcoord.rg, 0.0);
-	// color = lmcoord.rgb;
-	// color = specularMap;
-	// color = material;
-	// color = shadow;
-	// color = normalize(viewVector);
-	// color = getCameraVector(depth, texcoord);
-	// color = viewPos;
-	// color = vec3(abs(viewZ));
-	// color = vec3(viewPos.z * -1.0);
-	// color = vec3(material.g);
-	// color = vec3(occlusion);
-	// color = texture2D(colortex0, texcoord).rgb;
-	// color = vec3(mod(texcoord.x * viewWidth, 16.0) / 16.0, mod(texcoord.y * viewHeight, 16.0) / 16.0, 0.0);
-	// color = vec3(dot(getCameraVector(depth, texcoord), normalize(-shadowLightPosition)));
-	// color = vec3(specularMap.g == 230.0/255.0);
-	// color = vec3((specularMap.g - 229.0 / 255.0) * 255.0 / 8.0);
-	// color = vec3((specularMap.b < 64.9 / 255.0) ? specularMap.b * 2.0 : 0.0);
+// ---------------------------- Output to Buffers -------------------------------
+	gl_FragData[0] = vec4(color, occlusion); //gcolor
 
-	// vec3 lightDir = normalize(shadowLightPosition);
-    // vec3 viewDir = getCameraVector(depth, texcoord);
-    // vec3 halfwayDir = normalize(viewDir + lightDir);
-	// color = vec3(dot(normal, halfwayDir));
-	// float mult = material.r * 1.0 + wetness * 0.2;
-    // color = vec3(mult * pow(max(dot(normal, halfwayDir), 0.0), 64.0)) * shadow;
-
-/* DRAWBUFFERS:78 */
-	gl_FragData[0] = vec4(color, 1.0); //gcolor
-
-	float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
-	gl_FragData[1] = vec4((brightness > Bloom_Threshold) ? color : texture2D(colortex8, texcoord).rgb, 1.0);
+	// float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
+	// gl_FragData[1] = vec4((brightness > Bloom_Threshold) ? color : texture2D(colortex8, texcoord).rgb, 1.0);
 }

@@ -2,12 +2,16 @@
 
 #include "include.glsl"
 
+uniform vec3 cameraPosition;
+
 varying vec2 texcoord;
 varying vec2 lmcoord;
 varying vec4 glcolor;
 varying mat3 tbn;
-varying vec2 horizontalPos;
+varying vec4 vertexPos;
 varying float blockType;
+varying vec4 textureBounds;
+varying vec3 viewPos;
 
 attribute vec4 at_tangent;
 attribute vec4 mc_Entity;
@@ -19,9 +23,11 @@ void main() {
 	glcolor = gl_Color;
 
 	blockType = getBlockType(mc_Entity.x);
-	vec4 vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex, texcoord, mc_midTexCoord, gl_Normal), 0.0);
+	// horizontalPos = gl_Vertex.xz + cameraPosition.xz;
+	vertexPos = gl_Vertex + vec4(waveOffset(blockType, gl_Vertex.xyz + cameraPosition, texcoord, mc_midTexCoord, gl_Normal), 0.0);
 	gl_Position = gl_ModelViewProjectionMatrix * vertexPos;
-	horizontalPos = gl_Vertex.xz;
+	// vertexPos.xyz += cameraPosition;
+	viewPos = (gl_ModelViewMatrix * vertexPos).xyz;
 
 	vec3 normal = gl_NormalMatrix * gl_Normal;
     vec3 tangent = normalize(gl_NormalMatrix * at_tangent.xyz);
@@ -30,4 +36,7 @@ void main() {
 	tbn = mat3(tangent.x, binormal.x, normal.x,
 					 tangent.y, binormal.y, normal.y,
 					 tangent.z, binormal.z, normal.z);
+
+	vec2 halfSize = abs(texcoord - mc_midTexCoord);
+	textureBounds = vec4(mc_midTexCoord.xy - halfSize, mc_midTexCoord.xy + halfSize);
 }

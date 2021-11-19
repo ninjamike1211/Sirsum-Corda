@@ -5,6 +5,7 @@
 varying vec2 texcoord;
 varying vec3 bottomSkyColor;
 varying vec3 viewVector;
+varying vec3 sunPosNorm;
 
 void main() {
 	gl_Position = ftransform();
@@ -13,6 +14,8 @@ void main() {
 	vec4 ray = gbufferProjectionInverse * vec4(texcoord * 2.0 - 1.0, 0.0, 1.0);
 	viewVector = (ray.xyz / ray.w);
 	viewVector /= viewVector.z;
+
+	sunPosNorm = fixedLightPosition();
 
 	#ifndef Old_Sky
 		float timeFactor = dayTimeFactor();

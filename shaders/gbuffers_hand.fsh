@@ -1,5 +1,7 @@
 #version 120
 
+#define Combine_Normal_Buffers
+
 uniform sampler2D lightmap;
 uniform sampler2D texture;
 #ifdef MC_NORMAL_MAP
@@ -25,18 +27,23 @@ void main() {
         vec2 premap = texture2D(normals, texcoord).xy * 2.0 - 1.0;
         vec3 bumpmap = vec3(premap, sqrt(1.0 - premap.x * premap.x - premap.y * premap.y));
 		// float ao = texture2D(normals, texcoord).b;
-		float ao = glcolor.a;
-		float height = texture2D(normals, texcoord).a;
+		// float ao = glcolor.a;
 	#else
 		vec3 bumpmap = vec3(0.0, 0.0, 1.0);
-		float ao = glcolor.a;
-		float height = 1.0;
+		// float ao = glcolor.a;
 	#endif
-	gl_FragData[1] = vec4((bumpmap * tbn) * 0.5f + 0.5f, 1.0);
-	gl_FragData[2] = vec4(velocity, 1.0);
+	vec3 normal = (normalize(bumpmap) * tbn) * 0.5f + 0.5f;
+	#ifdef Combine_Normal_Buffers
+		gl_FragData[1] = vec4(normal.xy, tbn[0][2] * 0.5 + 0.5, tbn[1][2] * 0.5 + 0.5);
+	#else
+		gl_FragData[1] = vec4(normal, 1.0);
+		gl_FragData[2] = vec4(tbn[0][2] * 0.5 + 0.5, tbn[1][2] * 0.5 + 0.5, tbn[2][2] * 0.5 + 0.5, 1.0);
+	#endif
+	
+	// gl_FragData[2] = vec4(velocity, 1.0);
 	gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
 	#ifdef MC_SPECULAR_MAP
         gl_FragData[4] = vec4(texture2D(specular, texcoord).rgb, 1.0);
     #endif
-	gl_FragData[5] = vec4(height, ao, 1.0, 1.0);
+	gl_FragData[5] = vec4(0.0, glcolor.a, 1.0, 1.0);
 }

@@ -1,5 +1,10 @@
 #define PI 3.1415926538
 
+#define MC_TEXTURE_FORMAT_LAB_PBR_1_3
+
+#define Combine_Normal_Buffers
+
+#define Shadow_Enable // Enable shadows (very large performance impact when enabled).
 #define Shadow_Distort_Factor 0.10 //Distortion factor for the shadow map. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.20 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.30 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.40 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.50 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.60 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.70 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.80 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.90 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.00]
 #define Shadow_Bias 0.005 //Increase this if you get shadow acne. Decrease this if you get peter panning. [0.000 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0.010 0.012 0.014 0.016 0.018 0.020 0.022 0.024 0.026 0.028 0.030 0.035 0.040 0.045 0.050]
 #define Shadow_Blur_Amount 1.0 //Multiplier for the amount of blur at the edges of shadows. Lower values means less blur (harder edges). Higher values can help hide aliasing in shadows. [0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0]
@@ -7,31 +12,63 @@
 #define Shadow_Filter 2 //Increases shadow sample count, improving quality at a slight performance cost. [0 1 2]
 #define Shadow_Transparent 2 //Controls how semi-transparent objects cast shadows. off: transparent objects don't cast shadows. opaque: transparent objects cast solid shadows. colored: transparent objects cast colored shadows based on their color and opacity. [0 1 2]
 
-#define water_wave //Causes water to displace and wave.
 #define leaves_wave //Causes leaves to russle and wave in the wind.
 #define vine_wave //Causes vines to swing slightly in the wind.
 #define grass_wave //Causes grass and some flowers to russle in the wind.
 
-#define SSAO 2 // Screen space ambient occlusion. Provides better shadows in corners and small spaces at performance cost. [0 1 2 3 4]
+#define SSAO 2 // Provides better shadows in corners and small spaces at performance cost. Opaque: SSAO only on opaque objects. Everything_front: SSAO on every object, but not through transparent objects. Everything: Dual pass SSAO on both opaque and transparent object, even through each other. [0 1 2 3]
+#define SSAO_Quality 1 // Quality of SSAO. Higher values increase quality at performance cost. [0 1 2 3]
 #define SSAO_Radius 3.0 // Radius of SSAO. Higher values causes ao to be more spread out. Lower values will concentrate shadows more in corners. [0.5 0.75 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0]
+#define SSAO_Strength 0.6 // Strength of ambient shadows. 0 means no shadows. Higher numbers mean darker shadows. [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
 
-#define Bloom_Threshold 1.0 //Threshold for bloom, lower values mean more bloom on darker objects. [0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5]
+#define SSR // Screen space reflections on water, metal, and other shiny surfaces.
+#define SSR_Top 0.8 // [0.0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0]
+#define SSR_Bottom 0.45 // [0.0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0]
+#define SSR_Rough
+#define SSR_Max_Roughness 0.7 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+#define SSR_Multi
+
+//#define bloom
+#define Bloom_Threshold 1.0 //Threshold for bloom, lower values mean more bloom on darker objects. [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5]
+#define Bloom_Spread 1.0 // [0.25 0.5 0.75 1.0 1.5 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0]
 
 #define PBR_Lighting
 
 // #define Old_Sky
 // #define Old_Sun
 
-uniform sampler2D shadowtex0;
-uniform sampler2D shadowtex1;
-uniform sampler2D shadowcolor0;
+// #define TAA
+#define TAA_Jitter_Scale 1000.0
+
+#define POM
+#define POM_Depth 1.0 // Depth of POM in blocks. Lower values decreases effect. Appealing values may depend on resource pack [0.2 0.4 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.6 1.8 2.0 3.0 4.0]
+#define POM_Layers 50 // Quality of POM. Higher values are better quality with more performance cost [5 10 20 30 40 50 75 100 200]
+// #define POM_Interpolate
+#define POM_PDO
+
+#define Water_POM
+#define Water_POM_Resolution 16.0 // Match this with the resolution of the water texture (16.0 for default texture). [8.0 16.0 32.0 64.0 128.0 256.0 512.0 1024.0 2048.0]
+#define Water_POM_Layers 50 // Quality of POM. Higher values are better quality with more performance cost [5 10 20 30 40 50 75 100 200]
+
+#define Water_Depth 0.25 //[0.0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.5]
+#define Water_Direction 1 // Direction that water waves travel. [0 1 2 3 4]
+// #define Water_Noise
+#define Water_Color 0 // [0 1 2]
+
+#define DOF_BlurCoC
+
+#define Fog_Factor 1.0 // [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.5 3.0 3.5 4.0 4.5 5.0]
+
 uniform sampler2D noisetex;
+// uniform sampler2D colortex14;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
 uniform vec3 shadowLightPosition;
+uniform vec3 waterColor;
+uniform ivec2 eyeBrightness;
 uniform ivec2 eyeBrightnessSmooth;
 uniform float frameTimeCounter;
 uniform float rainStrength;
@@ -41,21 +78,50 @@ uniform float viewWidth;
 uniform float viewHeight;
 uniform float wetness;
 uniform int worldTime;
+uniform int frameCounter;
 uniform int isEyeInWater;
+uniform float timeFactor;
+uniform ivec2 atlasSize;
+uniform bool inEnd;
+// uniform int waterColorIndex;
 
-const int shadowMapResolution = 2048; //The resolution of shadow map. Higher values leads to higher quality shaders. Lower values leads to better performance. [512 1024 2048 4096]
-const float shadowDistance = 120; //The distance over which shadows are rendered in blocks. Higher values will cause shadows to render farther in the distance but also decrease shadow quality. [80 120 160 200 240]
 const float sunPathRotation = -40; //Rotation of the path of the sun and moon in the sky. Helps reduce shadow acne at perpendicular angles. 0 means directly above the player. 90 means horizontal to the ground. Negative values are the opposite side of the vertical. [-90 -80 -70 -60 -50 -40 -30 -20 -10 0 10 20 30 40 50 60 70 80 90]
 const float wetnessHalflife = 200.0;
 const float drynessHalflife = 25.0;
 const int noiseTextureResolution = 512;
 const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //Used for manually calculating the sun's position, since the sunPosition uniform is inaccurate in the skybasic stage.
 /*
-const int colortex2Format = RGB32F;
+const int colortex1Format = RGB16;
+const int colortex8Format = RGB8;
+const int colortex12Format = RGB8;
 */
+
+const vec3 waterColors[] = vec3[] (
+    vec3(0.05, 0.1, 0.25),
+    vec3(0.24, 0.25, 0.12),
+    vec3(0.015, 0.086, 0.2),
+    vec3(0.015, 0.121, 0.2),
+    vec3(0.05, 0.07, 0.25)
+);
+
+#ifdef Shadow_Enable
+    uniform sampler2D shadowtex0;
+    uniform sampler2D shadowtex1;
+    uniform sampler2D shadowcolor0;
+    const int shadowMapResolution = 2048; //The resolution of shadow map. Higher values leads to higher quality shaders. Lower values leads to better performance. [512 1024 2048 4096]
+    const float shadowDistance = 120; //The distance over which shadows are rendered in blocks. Higher values will cause shadows to render farther in the distance but also decrease shadow quality. [80 120 160 200 240]
+#endif
+
+#ifdef bloom
+// const float bloomWeight[] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+// const float bloomWeight[] = float[] (0.111111, 0.111111, 0.111111, 0.111111, 0.111111);
+// const float bloomWeight[] = float[] (0.190662, 0.180493, 0.152487, 0.113383, 0.072096, 0.037009, 0.013487, 0.0023815);
+const float bloomWeight[] = float[] (0.09972, 0.09923, 0.097743, 0.09529, 0.09189, 0.087577, 0.08239, 0.07639, 0.06963, 0.062175, 0.054103, 0.04549, 0.036432, 0.027009, 0.017319, 0.0074708);
+#endif
+
 #if SSAO != 0
 const vec3 aoKernel[] = vec3[](
-    #if SSAO == 1
+    #if SSAO_Quality == 0
         vec3(-0.040092375, -0.085082404, 0.033964507),
         vec3(0.07686139, -0.005956394, 0.08406606),
         vec3(-0.032883804, -0.1414308, 0.057706576),
@@ -64,7 +130,7 @@ const vec3 aoKernel[] = vec3[](
         vec3(0.12736452, -0.12108572, 0.41596302),
         vec3(-0.23230846, -0.52947176, 0.18229501),
         vec3(0.31171134, 0.6173404, 0.3799296)
-    #elif SSAO == 2
+    #elif SSAO_Quality == 1
         vec3(0.06750871, 0.055483162, 0.048622973),
         vec3(0.08817828, -0.0150950905, 0.052078906),
         vec3(-0.08528654, 0.07219002, 0.022914235),
@@ -81,7 +147,7 @@ const vec3 aoKernel[] = vec3[](
         vec3(0.6513573, -0.21525997, 0.105962284),
         vec3(0.6569041, -0.3880737, 0.20123476),
         vec3(0.5024354, -0.29774883, 0.672914)
-    #elif SSAO == 3
+    #elif SSAO_Quality == 2
         vec3(0.069431655, 0.040512662, 0.059480842),
         vec3(0.05884631, 0.0035979126, 0.08185793),
         vec3(-0.074091464, -0.02866131, 0.06636617),
@@ -114,7 +180,7 @@ const vec3 aoKernel[] = vec3[](
         vec3(0.6529396, 0.4847204, 0.20713681),
         vec3(0.72675693, -0.131368, 0.49847344),
         vec3(0.59863853, -0.54075235, 0.4914699)
-    #elif SSAO == 4
+    #elif SSAO_Quality == 3
         vec3(-0.034980517, -0.07308654, 0.058606513),
         vec3(0.03756984, -0.072102696, 0.0585978),
         vec3(0.06918004, 0.034017343, 0.065065324),
@@ -250,6 +316,190 @@ const vec2 shadowKernel[] = vec2[](
 );
 #endif
 
+const vec2 reflectionKernel[] = vec2[](
+    vec2(0., 0.),
+    vec2(1., 0.),
+    vec2(-1., 0.),
+    vec2(0.30901697, 0.95105654),
+    vec2(-0.30901664, -0.9510566),
+    vec2(0.54545456, 0),
+    vec2(0.16855472, 0.5187581),
+    vec2(-0.44128203, 0.3206101),
+    vec2(-0.44128197, -0.3206102),
+    vec2(0.1685548, -0.5187581),
+    vec2(0.809017, 0.58778524),
+    vec2(-0.30901703, 0.9510565),
+    vec2(-0.80901706, 0.5877852),
+    vec2(-0.80901694, -0.58778536),
+    vec2(0.30901712, -0.9510565),
+    vec2(0.80901694, -0.5877853)
+);
+
+const vec2 jitterSequence[] = vec2[](
+    vec2(0.5,0.33333334),
+    vec2(0.25,0.6666667),
+    vec2(0.75,0.11111111),
+    vec2(0.125,0.44444445),
+    vec2(0.625,0.7777778),
+    vec2(0.375,0.22222222),
+    vec2(0.875,0.5555556),
+    vec2(0.0625,0.8888889),
+    vec2(0.5625,0.037037037),
+    vec2(0.3125,0.3703704),
+    vec2(0.8125,0.7037037),
+    vec2(0.1875,0.14814815),
+    vec2(0.6875,0.4814815),
+    vec2(0.4375,0.8148148),
+    vec2(0.9375,0.25925925),
+    vec2(0.03125,0.5925926),
+    vec2(0.53125,0.9259259),
+    vec2(0.28125,0.074074075),
+    vec2(0.78125,0.4074074),
+    vec2(0.15625,0.7407408),
+    vec2(0.65625,0.1851852),
+    vec2(0.40625,0.5185185),
+    vec2(0.90625,0.8518519),
+    vec2(0.09375,0.2962963),
+    vec2(0.59375,0.6296297),
+    vec2(0.34375,0.962963),
+    vec2(0.84375,0.012345679),
+    vec2(0.21875,0.34567901),
+    vec2(0.71875,0.67901236),
+    vec2(0.46875,0.12345679),
+    vec2(0.96875,0.45679012),
+    vec2(0.015625,0.79012346),
+    vec2(0.515625,0.23456791),
+    vec2(0.265625,0.56790125),
+    vec2(0.765625,0.90123457),
+    vec2(0.140625,0.049382716),
+    vec2(0.640625,0.38271606),
+    vec2(0.390625,0.7160494),
+    vec2(0.890625,0.16049382),
+    vec2(0.078125,0.49382716),
+    vec2(0.578125,0.8271605),
+    vec2(0.328125,0.27160493),
+    vec2(0.828125,0.60493827),
+    vec2(0.203125,0.9382716),
+    vec2(0.703125,0.086419754),
+    vec2(0.453125,0.41975307),
+    vec2(0.953125,0.75308645),
+    vec2(0.046875,0.19753087),
+    vec2(0.546875,0.5308642),
+    vec2(0.296875,0.86419755),
+    vec2(0.796875,0.30864197),
+    vec2(0.171875,0.64197534),
+    vec2(0.671875,0.97530866),
+    vec2(0.421875,0.024691358),
+    vec2(0.921875,0.35802472),
+    vec2(0.109375,0.69135803),
+    vec2(0.609375,0.13580248),
+    vec2(0.359375,0.46913582),
+    vec2(0.859375,0.80246913),
+    vec2(0.234375,0.24691358),
+    vec2(0.734375,0.5802469),
+    vec2(0.484375,0.91358024),
+    vec2(0.984375,0.061728396),
+    vec2(0.0078125,0.39506173),
+    vec2(0.5078125,0.72839504),
+    vec2(0.2578125,0.17283951),
+    vec2(0.7578125,0.50617284),
+    vec2(0.1328125,0.83950615),
+    vec2(0.6328125,0.28395063),
+    vec2(0.3828125,0.61728394),
+    vec2(0.8828125,0.95061725),
+    vec2(0.0703125,0.09876543),
+    vec2(0.5703125,0.43209875),
+    vec2(0.3203125,0.7654321),
+    vec2(0.8203125,0.20987655),
+    vec2(0.1953125,0.54320985),
+    vec2(0.6953125,0.8765432),
+    vec2(0.4453125,0.32098764),
+    vec2(0.9453125,0.654321),
+    vec2(0.0390625,0.9876543),
+    vec2(0.5390625,0.004115226),
+    vec2(0.2890625,0.33744857),
+    vec2(0.7890625,0.6707819),
+    vec2(0.1640625,0.115226336),
+    vec2(0.6640625,0.44855967),
+    vec2(0.4140625,0.781893),
+    vec2(0.9140625,0.22633745),
+    vec2(0.1015625,0.5596708),
+    vec2(0.6015625,0.8930041),
+    vec2(0.3515625,0.041152265),
+    vec2(0.8515625,0.3744856),
+    vec2(0.2265625,0.7078189),
+    vec2(0.7265625,0.15226337),
+    vec2(0.4765625,0.48559672),
+    vec2(0.9765625,0.81893003),
+    vec2(0.0234375,0.26337448),
+    vec2(0.5234375,0.5967078),
+    vec2(0.2734375,0.93004113),
+    vec2(0.7734375,0.0781893),
+    vec2(0.1484375,0.41152263),
+    vec2(0.6484375,0.744856),
+    vec2(0.3984375,0.18930042),
+    vec2(0.8984375,0.52263373),
+    vec2(0.0859375,0.8559671),
+    vec2(0.5859375,0.30041152),
+    vec2(0.3359375,0.6337449),
+    vec2(0.8359375,0.9670782),
+    vec2(0.2109375,0.016460905),
+    vec2(0.7109375,0.34979424),
+    vec2(0.4609375,0.6831276),
+    vec2(0.9609375,0.12757201),
+    vec2(0.0546875,0.46090534),
+    vec2(0.5546875,0.7942387),
+    vec2(0.3046875,0.23868313),
+    vec2(0.8046875,0.5720165),
+    vec2(0.1796875,0.9053498),
+    vec2(0.6796875,0.053497944),
+    vec2(0.4296875,0.38683128),
+    vec2(0.9296875,0.7201646),
+    vec2(0.1171875,0.16460904),
+    vec2(0.6171875,0.4979424),
+    vec2(0.3671875,0.8312757),
+    vec2(0.8671875,0.27572015),
+    vec2(0.2421875,0.6090535),
+    vec2(0.7421875,0.9423868),
+    vec2(0.4921875,0.09053498),
+    vec2(0.9921875,0.4238683),
+    vec2(0.00390625,0.7572017)
+);
+
+const vec2 waveDirs[] = vec2[] (
+#if Water_Direction == 0
+    vec2(-0.65364, -0.75680),
+    vec2(0.26749, 0.96355),
+    vec2(-0.84810, -0.52983),
+    vec2(0.90044, 0.43496),
+    vec2(0.92747, -0.37387)
+#elif Water_Direction == 1
+    vec2(-0.65364, -0.75680),
+    vec2(-0.26749, -0.96355),
+    vec2(-0.84810, -0.52983),
+    vec2(-0.90044, -0.43496),
+    vec2(-0.92747, -0.37387)
+#elif Water_Direction == 2
+    vec2(-0.65364, 0.75680),
+    vec2(-0.26749, 0.96355),
+    vec2(-0.84810, 0.52983),
+    vec2(-0.90044, 0.43496),
+    vec2(-0.92747, 0.37387)
+#elif Water_Direction == 3
+    vec2(0.65364, -0.75680),
+    vec2(0.26749, -0.96355),
+    vec2(0.84810, -0.52983),
+    vec2(0.90044, -0.43496),
+    vec2(0.92747, -0.37387)
+#elif Water_Direction == 4
+    vec2(0.65364, 0.75680),
+    vec2(0.26749, 0.96355),
+    vec2(0.84810, 0.52983),
+    vec2(0.90044, 0.43496),
+    vec2(0.92747, 0.37387)
+#endif
+);
+
 //euclidian distance is defined as sqrt(a^2 + b^2 + ...)
 //this length function instead does cbrt(a^3 + b^3 + ...)
 //this results in smaller distances along the diagonal axes.
@@ -273,6 +523,17 @@ float linearDepth(float depth) {
 	depth = depth * 2.0 - 1.0;
 	depth = (2.0 * near * far) / (far + near - depth * (far - near));
 	return min(depth / far, 1.0);
+}
+
+vec3 decodeNormal(vec2 normal) {
+    return vec3(normal, sqrt(1.0 - dot(normal.xy, normal.xy)));
+}
+
+vec3 viewSpaceToScreenSpace(vec3 viewPos) {
+    vec4 screenSpace = gbufferProjection * vec4(viewPos, 1.0);
+    screenSpace.xyz /= screenSpace.w;
+    screenSpace.xy = screenSpace.xy * 0.5 + 0.5;
+    return screenSpace.xyz;
 }
 
 vec3 fixedSunPosition() {
@@ -306,12 +567,12 @@ float dayTimeFactor() {
 }
 
 vec3 getTopSkyColor(float time) {
-    vec3 color = mix(vec3(0.0, 0.01, 0.04), vec3(0.3, 0.5, 0.8), clamp(2.0 * (time + 0.4), 0.0, 1.0));
+    vec3 color = mix(vec3(0.0, 0.01, 0.04), vec3(0.25, 0.4, 0.8), clamp(2.0 * (time + 0.4), 0.0, 1.0));
     return mix(color, mix(vec3(0.2), vec3(0.45), clamp(2.0 * (time + 0.4), 0.0, 1.0)), rainStrength);
 }
 
 vec3 getBottomSkyColor(float time) {
-    vec3 color = mix(vec3(0.06, 0.07, 0.1), mix(vec3(0.75, 0.6, 0.5), vec3(0.6, 0.8, 1.0), clamp(5.0 * (time - 0.2), 0.0, 1.0)), clamp(2.0 * (time + 0.4), 0.0, 1.0));
+    vec3 color = mix(vec3(0.06, 0.07, 0.1), mix(vec3(0.75, 0.6, 0.5), vec3(0.53, 0.7, 1.0), clamp(5.0 * (time - 0.2), 0.0, 1.0)), clamp(2.0 * (time + 0.4), 0.0, 1.0));
     return mix(color, mix(vec3(.15), vec3(0.35), clamp(2.0 * (time + 0.4), 0.0, 1.0)), rainStrength);
 }
 
@@ -327,23 +588,25 @@ vec3 getSunBlurColor(float time) {
 
 vec3 skyLightColor() {
     float timeFactor = dayTimeFactor();
-	return mix(mix(vec3(0.06, 0.06, 0.14), vec3(0.08), rainStrength), mix(mix(vec3(1.0, 0.6, 0.4), vec3(1.5, 1.5, 1.2), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), vec3(0.3), rainStrength), clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
+    vec3 night = mix(0.3 * vec3(0.06, 0.06, 0.14), vec3(0.08), rainStrength);
+    vec3 day = mix(mix(vec3(1.0, 0.6, 0.4), vec3(0.85, 0.8, 0.7), clamp(5.0 * (timeFactor - 0.2), 0.0, 1.0)), vec3(0.3), rainStrength);
+	return mix(night, day, clamp(2.0 * (timeFactor + 0.4), 0.0, 1.0));
 }
 
 float fogify(float x, float w) {
 	return w / (x * x + w);
 }
 
-vec3 getSkyColor(vec3 dir, vec3 topskycolor, vec3 bottomskycolor, vec3 suncolor, vec3 sunblurcolor, vec3 sunPos, vec3 upPos, float time) {
-    #ifdef Old_Sky
-        float upDot = dot(dir, upPos); //not much, what's up with you?
-	    return mix(skyColor, fogColor, fogify(max(upDot, 0.0), 0.25));
-    #else
+vec3 getSkyColor(vec3 dir, vec3 topskycolor, vec3 bottomskycolor, vec3 suncolor, vec3 sunblurcolor, vec3 sunPos, vec3 upPos, float time, bool showSun) {
+    // #ifdef Old_Sky
+    //     float upDot = dot(dir, upPos); //not much, what's up with you?
+	//     return mix(skyColor, fogColor, fogify(max(upDot, 0.0), 0.25));
+    // #else
         float upDot = dot(dir, upPos);
         vec3 color = mix(topskycolor, bottomskycolor, fogify(max(upDot, 0.0), 0.1));
 
         float sunDotV = max(dot(sunPos, dir), 0.0);
-        float sunBlur = smoothstep(0.996, 0.9975, sunDotV);
+        float sunBlur = float(showSun) * smoothstep(0.996, 0.9975, sunDotV);
         #ifdef Old_Sun
             sunBlur = 0.0;
         #endif
@@ -353,8 +616,12 @@ vec3 getSkyColor(vec3 dir, vec3 topskycolor, vec3 bottomskycolor, vec3 suncolor,
         sunAmount *= 1.0 - clamp(5.0 * (time - 0.2), 0.0, 1.0);
         sunAmount *= min(pow(1.0 - dot(dir, upPos), 3.0), 1.0);
 
-        return sunAmount * suncolor + sunBlur * sunblurcolor + max(1.0 - sunAmount - sunBlur, 0.0) * color;
-    #endif
+        return sunAmount * suncolor + sunBlur * sunblurcolor * 3.0 + max(1.0 - sunAmount - sunBlur, 0.0) * color;
+    // #endif
+
+    // float upDot = max(dot(dir, upPos), 0.0);
+    // float lightDot = max(dot(dir, normalize(shadowLightPosition)), 0.0);
+    // return texture2D(colortex14, vec2(upDot, lightDot)).rgb;
 }
 
 float adjustLightmapTorch(float torch) {
@@ -377,6 +644,10 @@ vec3 lightmapTorch(float amount) {
 	return mix(vec3(0.0), vec3(2.8, 1.1, 0.25), adjustLightmapTorch(amount));
 }
 
+vec3 ambient() {
+    return mix(vec3(0.2), vec3(0.5), timeFactor * 0.5 + 0.5);
+}
+
 vec3 calcViewPos(vec2 texcoord, float depth) {
     vec4 clipPos = vec4(texcoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
 	vec4 viewPos = gbufferProjectionInverse * clipPos;
@@ -388,6 +659,77 @@ vec3 calcViewPos(vec3 viewVector, float depth) {
 	return viewVector * viewZ;
 }
 
+vec2 getJitter() {
+    #ifdef TAA
+        int index = int(mod(float(frameCounter), jitterSequence.length()));
+        return jitterSequence[index] / vec2(viewWidth, viewHeight) * TAA_Jitter_Scale;
+    #else
+        return vec2(0.0);
+    #endif
+}
+
+float interpolateHeight(sampler2D normalTex, vec2 texcoord, vec4 texcoordRange) {
+    vec2 singleTexSize = texcoordRange.zw-texcoordRange.xy;
+
+    vec2 pixelCoord = texcoord * atlasSize;
+    // float topLeft = texture2D(normalTex, mod(floor(pixelCoord) / atlasSize, singleTexSize) + texcoordRange.xy).a;
+    // float topRight = texture2D(normalTex, mod(vec2(ceil(pixelCoord.x), floor(pixelCoord.y)) / atlasSize, singleTexSize) + texcoordRange.xy).a;
+    // float bottomLeft = texture2D(normalTex, mod(vec2(floor(pixelCoord.x), ceil(pixelCoord.y)) / atlasSize, singleTexSize) + texcoordRange.xy).a;
+    // float bottomRight = texture2D(normalTex, mod(ceil(pixelCoord) / atlasSize, singleTexSize) + texcoordRange.xy).a;
+    float topLeft = texture2D(normalTex, fract((floor(pixelCoord) / atlasSize - texcoordRange.xy) / singleTexSize) * singleTexSize + texcoordRange.xy).a;
+    float topRight = texture2D(normalTex, fract((vec2(ceil(pixelCoord.x), floor(pixelCoord.y)) / atlasSize - texcoordRange.xy) / singleTexSize) * singleTexSize + texcoordRange.xy).a;
+    float bottomLeft = texture2D(normalTex, fract((vec2(floor(pixelCoord.x), ceil(pixelCoord.y)) / atlasSize - texcoordRange.xy) / singleTexSize) * singleTexSize + texcoordRange.xy).a;
+    float bottomRight = texture2D(normalTex, fract((ceil(pixelCoord) / atlasSize - texcoordRange.xy) / singleTexSize) * singleTexSize + texcoordRange.xy).a;
+
+    return mix(mix(topLeft, topRight, fract(pixelCoord.x)), mix(bottomLeft, bottomRight, fract(pixelCoord.x)), fract(pixelCoord.y));
+}
+
+vec3 ParallaxMapping(vec2 texcoord, vec3 viewDir, vec2 singleTexSize, sampler2D normalTex, vec4 texcoordRange) {
+    // float layerCount = mix(256, 20, clamp(dot(normal, viewDir), 0.0, 1.0));
+    // float layerCount = mix(256, 20, dot(viewDir, vec3(0.0, 0.0, -1.0)));
+    float layerCount = POM_Layers;
+
+	float layerDepth = 1.0 / layerCount;
+	float currentLayerDepth = 0.0;
+    vec2 p = (-viewDir.xy / viewDir.z) * 0.25 * POM_Depth * singleTexSize;
+    vec2 deltaTexCoords = p / layerCount;
+
+	vec2  currentTexcoord = texcoord;
+
+    #ifdef POM_Interpolate
+	    float currentDepthMapValue = 1.0 - interpolateHeight(normalTex, currentTexcoord, texcoordRange);
+    #else
+        float currentDepthMapValue = 1.0 - texture2D(normalTex, currentTexcoord).a;
+    #endif
+	
+	while(currentLayerDepth < currentDepthMapValue)
+	{
+		// shift texture coordinates along direction of P
+		currentTexcoord += deltaTexCoords;
+
+        // wrap texture coordinates if they extend out of range
+        currentTexcoord.x -= floor((currentTexcoord.x - texcoordRange.x) / singleTexSize.x) * singleTexSize.x;
+        currentTexcoord.y -= floor((currentTexcoord.y - texcoordRange.y) / singleTexSize.y) * singleTexSize.y;
+
+		// get depthmap value at current texture coordinates
+		// currentDepthMapValue = 1.0 - texture2D(normalTex, currentTexcoord).a;
+        #ifdef POM_Interpolate
+            currentDepthMapValue = 1.0 - interpolateHeight(normalTex, currentTexcoord, texcoordRange);
+        #else
+            currentDepthMapValue = 1.0 - texture2D(normalTex, currentTexcoord).a;
+        #endif
+		// get depth of next layer
+		currentLayerDepth += layerDepth;
+	}
+
+    // #ifdef shadowFSH
+    //     return vec3(currentTexcoord, -(currentLayerDepth) * 0.25 * POM_Depth);
+    // #else
+	    return vec3(currentTexcoord, -(currentLayerDepth - layerDepth) * 0.25 * POM_Depth);
+    // #endif
+}
+
+#ifdef Shadow_Enable
 vec3 shadowVisibility(vec3 shadowPos) {
     #if Shadow_Transparent == 0
         return vec3(step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy).r));
@@ -401,28 +743,33 @@ vec3 shadowVisibility(vec3 shadowPos) {
         return mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
     #endif
 }
+#endif
 
-vec3 calculateShadow(vec3 shadowPos, float NdotL, vec2 texcoord) {
-    #if Shadow_Filter > 0
-        vec3 shadowVal = vec3(0.0);
-        float randomAngle = texture2D(noisetex, texcoord * 20.0f).r * 100.0f;
-        float cosTheta = cos(randomAngle);
-        float sinTheta = sin(randomAngle);
-        mat2 rotation =  0.0006 * mat2(cosTheta, -sinTheta, sinTheta, cosTheta);
-        if(shadowPos.s == -1.0 || texture2D(shadowtex1, shadowPos.xy).r == 1.0) {
-            shadowVal = vec3(1.0);
-        }
-        else {
-            for(int i = 0; i < shadowKernel.length(); ++i) {
-                vec2 offset = Shadow_Blur_Amount * rotation * shadowKernel[i];
-                shadowVal += shadowVisibility(shadowPos + vec3(offset, 0.0));
+vec3 calculateShadow(vec3 shadowPos, vec2 texcoord) {
+    #ifdef Shadow_Enable
+        #if Shadow_Filter > 0
+            vec3 shadowVal = vec3(0.0);
+            float randomAngle = texture2D(noisetex, texcoord * 20.0f).a * 100.0f;
+            float cosTheta = cos(randomAngle);
+            float sinTheta = sin(randomAngle);
+            mat2 rotation =  0.0006 * mat2(cosTheta, -sinTheta, sinTheta, cosTheta);
+            if(shadowPos.s == -1.0 || texture2D(shadowtex1, shadowPos.xy).r == 1.0) {
+                shadowVal = vec3(1.0);
             }
-            shadowVal /= shadowKernel.length();
-        }
+            else {
+                for(int i = 0; i < shadowKernel.length(); ++i) {
+                    vec2 offset = Shadow_Blur_Amount * rotation * shadowKernel[i];
+                    shadowVal += shadowVisibility(shadowPos + vec3(offset, 0.0));
+                }
+                shadowVal /= shadowKernel.length();
+            }
 
-        return min(shadowVal, max(NdotL, 0.0));
+            return shadowVal;
+        #else
+            return shadowVisibility(shadowPos);
+        #endif
     #else
-        return shadowVisibility(shadowPos);
+        return vec3(1.0);
     #endif
 }
 
@@ -439,6 +786,19 @@ vec3 adjustLightMap(vec2 lmcoord) {
     return skyAmbient + torchAmbient;
 }
 
+vec3 adjustLightMapWater(vec2 lmcoord) {
+    // vec3 skyLight = lightmapSky(lmcoord.g) * (shadowVal * Shadow_Darkness + (1.0 - Shadow_Darkness));
+	// vec3 torchLight = lightmapTorch(lmcoord.r) * (1.1 - skyLight);
+
+	// return skyLight + torchLight;
+
+    vec3 skyAmbient = lightmapSky(lmcoord.g);
+    vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.75 - skyAmbient.r, 0.0, 1.0);
+    skyAmbient *= (1.0 - Shadow_Darkness);
+
+    return torchAmbient;
+}
+
 vec3 adjustLightMapShadow(vec3 shadow, vec2 lmcoord) {
     vec3 skyAmbient = lightmapSky(lmcoord.g);
     vec3 torchAmbient = lightmapTorch(lmcoord.r) * clamp(1.9 - skyAmbient.r, 0.0, 1.0);
@@ -451,10 +811,14 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
+float fresnel(float cosTheta) {
+    return 0.04 + (1.0 - 0.04) * pow(max(1.0 - cosTheta, 0.0), 5.0);
+}
+
 float DistributionGGX(vec3 normal, vec3 halfwayDir, float roughness) {
     float a = roughness;
     float a2 = a*a;
-    float NdotH = max(dot(normal, halfwayDir), 0.0);
+    float NdotH = clamp(dot(normal, halfwayDir) + 0.0, 0.0, 1.0);
     float NdotH2 = NdotH*NdotH;
 	
     float num = a2;
@@ -483,18 +847,7 @@ float GeometrySmith(vec3 normal, vec3 viewDir, vec3 lightDir, float roughness) {
     return ggx1 * ggx2;
 }
 
-vec3 PBRLighting(vec2 texcoord, vec3 viewDir, vec3 albedo, vec3 normal, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
-    light *= mix(3.5, 1.0, rainStrength);
-    
-    vec3 lightDir = normalize(shadowLightPosition);
-    // vec3 viewDir = getCameraVector(linearDepth, texcoord);
-    vec3 halfwayDir = normalize(viewDir + lightDir);
-
-    albedo = pow(albedo, vec3(2.2));
-
-    // light = pow(light, vec3(2.2));
-
-    // vec3 F0 = mix(vec3(0.1), vec3(1.00, 0.71, 0.29), specMap.g);
+vec4 calcF0(vec3 specMap, vec3 albedo) {
     vec3 F0 = vec3(min(specMap.g, 0.04));
     float metalness = 0.0;
     if(specMap.g == 230.0 / 255.0) { // Iron
@@ -534,13 +887,30 @@ vec3 PBRLighting(vec2 texcoord, vec3 viewDir, vec3 albedo, vec3 normal, vec3 spe
         metalness = 1.0;
     }
 
+    return vec4(F0, metalness);
+}
+
+vec3 PBRLighting(vec3 viewDir, vec3 albedo, vec3 normal, vec3 lightDir, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
+    light *= mix(3.5, 1.0, rainStrength);
+    
+    // vec3 viewDir = getCameraVector(linearDepth, texcoord);
+    vec3 halfwayDir = normalize(viewDir + lightDir);
+
+    albedo = pow(albedo, vec3(2.2));
+
+    // light = pow(light, vec3(2.2));
+
+    vec4 F0Results = calcF0(specMap, albedo);
+    vec3 F0 = F0Results.rgb;
+    float metalness = F0Results.w;
+
     float porosity = (specMap.b < 64.9 / 255.0) ? specMap.b * 2.0 : 0.0;
 
     float roughness = max(pow(1.0 - specMap.r, 2.0), 0.02);
     roughness = mix(roughness, min(roughness, 0.03), wetness);
 
-    // albedo = mix(albedo, (1.0 - porosity) * albedo, wetness);
-    // albedo = pow(albedo, mix(vec3(1.0), vec3(1.0 + 10.0 * porosity), wetness));
+    albedo = mix(albedo, (1.0 - porosity) * albedo, wetness);
+    albedo = pow(albedo, mix(vec3(1.0), vec3(1.0 + 10.0 * porosity), wetness));
 
     vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
     float NDF = DistributionGGX(normal, halfwayDir, roughness);
@@ -553,7 +923,7 @@ vec3 PBRLighting(vec2 texcoord, vec3 viewDir, vec3 albedo, vec3 normal, vec3 spe
     vec3 kS = F;
     vec3 kD = clamp(vec3(1.0) - kS, 0.0, 1.0);
     // kD = vec3(1.0);
-    // kD *= 1.0 - metalness;
+    kD *= 1.0 - metalness;
         
     // add to outgoing radiance Lo
     float NdotL = max(dot(normal, lightDir), 0.0);
@@ -573,8 +943,132 @@ vec3 PBRLighting(vec2 texcoord, vec3 viewDir, vec3 albedo, vec3 normal, vec3 spe
     return color;
 }
 
+vec3 pbrDiffuse(vec3 viewDir, vec3 albedo, vec3 normal, vec3 lightDir, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
+    light *= mix(3.5, 1.0, rainStrength);
+    albedo = pow(albedo, vec3(2.2));
+
+    vec4 F0Results = calcF0(specMap, albedo);
+    vec3 F0 = F0Results.rgb;
+    float metalness = F0Results.w;
+
+    vec3 halfwayDir = normalize(viewDir + lightDir);
+    vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
+
+    vec3 kS = F;
+    vec3 kD = clamp(vec3(1.0) - kS, 0.0, 1.0);
+    kD *= 1.0 - metalness;
+
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    vec3 Lo = (kD * albedo / PI) * NdotL * light;
+
+    vec3 ambient = adjustLightMap(lmcoord.rg) * albedo * material.g;
+    vec3 color = ambient + Lo;
+
+    color = pow(color, vec3(1.0/2.2)); 
+    return color;
+}
+
+vec3 pbrSpecular(vec3 viewDir, vec3 albedo, vec3 normal, vec3 lightDir, vec3 specMap, vec3 light) {
+    light *= mix(3.5, 1.0, rainStrength);
+    albedo = pow(albedo, vec3(2.2));
+
+    vec3 F0 = calcF0(specMap, albedo).rgb;
+
+    float roughness = max(pow(1.0 - specMap.r, 2.0), 0.02);
+    roughness = mix(roughness, min(roughness, 0.03), wetness);
+
+    vec3 halfwayDir = normalize(viewDir + lightDir);
+
+    vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0), F0);
+    float NDF = DistributionGGX(normal, halfwayDir, roughness);
+    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
+
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(normal, viewDir), 0.0) * max(dot(normal, lightDir), 0.0);
+    vec3 specular = numerator / max(denominator, 0.001);
+
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    vec3 Lo = specular * NdotL * light;
+
+    vec3 color = pow(Lo, vec3(1.0/2.2)); 
+    return color;
+}
+
+float D_GGX(float NoH, float a) {
+    float a2 = a * a;
+    float f = (NoH * a2 - NoH) * NoH + 1.0;
+    return a2 / (PI * f * f);
+}
+
+vec3 F_Schlick(float u, vec3 f0) {
+    return f0 + (vec3(1.0) - f0) * pow(1.0 - u, 5.0);
+}
+
+float V_SmithGGXCorrelated(float NoV, float NoL, float a) {
+    float a2 = a * a;
+    float GGXL = NoV * sqrt((-NoL * a2 + NoL) * NoL + a2);
+    float GGXV = NoL * sqrt((-NoV * a2 + NoV) * NoV + a2);
+    return 0.5 / (GGXV + GGXL);
+}
+
+float Fd_Lambert() {
+    return 1.0 / PI;
+}
+
+vec3 BRDF(vec3 albedo, vec3 viewDir, vec3 normal, vec3 specMap, vec3 lightDir, vec3 lightAmount) {
+    vec3 halfwayDir = normalize(viewDir + lightDir);
+
+    float NoV = abs(dot(normal, viewDir)) + 1e-5;
+    float NoL = clamp(dot(normal, lightDir), 0.0, 1.0);
+    float NoH = clamp(dot(normal, halfwayDir), 0.0, 1.0);
+    float LoH = clamp(dot(lightDir, halfwayDir), 0.0, 1.0);
+
+    // perceptually linear roughness to roughness (see parameterization)
+    float roughness = pow(1.0 - specMap.r, 2.0);
+
+    vec4 f0 = calcF0(specMap, albedo);
+
+    float D = D_GGX(NoH, roughness);
+    vec3  F = F_Schlick(LoH, f0.rgb);
+    float V = V_SmithGGXCorrelated(NoV, NoL, roughness);
+
+    // specular BRDF
+    vec3 Fr = (D * V) * F;
+
+    // diffuse BRDF
+    vec3 Fd = albedo * Fd_Lambert();
+
+    // apply lighting...
+    return (Fr + Fd) * lightAmount;
+}
+
+// vec3 pbrDiffuse(vec3 viewDir, vec3 albedo, vec3 normal, vec3 lightDir, vec3 specMap, vec3 material, vec3 light, vec2 lmcoord) {
+//     return (light + adjustLightMap(lmcoord.rg) + ambient()) * albedo * Fd_Lambert();
+// }
+
+// vec3 pbrSpecular(vec3 viewDir, vec3 albedo, vec3 normal, vec3 lightDir, vec3 specMap, vec3 light) {
+//     vec3 halfwayDir = normalize(viewDir + lightDir);
+
+//     float NoV = abs(dot(normal, viewDir)) + 1e-5;
+//     float NoL = clamp(dot(normal, lightDir), 0.0, 1.0);
+//     float NoH = clamp(dot(normal, halfwayDir), 0.0, 1.0);
+//     float LoH = clamp(dot(lightDir, halfwayDir), 0.0, 1.0);
+
+//     // perceptually linear roughness to roughness (see parameterization)
+//     float roughness = pow(1.0 - specMap.r, 2.0);
+
+//     vec4 f0 = calcF0(specMap, albedo);
+
+//     float D = D_GGX(NoH, roughness);
+//     vec3  F = F_Schlick(LoH, f0.rgb);
+//     float V = V_SmithGGXCorrelated(NoV, NoL, roughness);
+
+//     // specular BRDF
+//     return (D * V) * F * light;
+// }
+
 #if SSAO != 0
-float calcSSAO(vec3 normal, vec2 texcoord, sampler2D depthTex, sampler2D aoNoiseTex) {
+float calcSSAO(vec3 normal, vec3 viewVector, vec2 texcoord, sampler2D depthTex, sampler2D aoNoiseTex) {
     vec2 noiseCoord = vec2(mod(texcoord.x * viewWidth, 4.0) / 4.0, mod(texcoord.y * viewHeight, 4.0) / 4.0);
     vec3 rvec = vec3(texture2D(aoNoiseTex, noiseCoord).xy * 2.0 - 1.0, 0.0);
 	// vec3 rvec = vec3(1.0);
@@ -582,7 +1076,7 @@ float calcSSAO(vec3 normal, vec2 texcoord, sampler2D depthTex, sampler2D aoNoise
 	vec3 bitangent = cross(normal, tangent);
 	mat3 tbn = mat3(tangent, bitangent, normal);
 
-    vec3 fragPos = calcViewPos(texcoord, texture2D(depthTex, texcoord).r);
+    vec3 fragPos = calcViewPos(viewVector, texture2D(depthTex, texcoord).r);
 
     float occlusion = 0.0;
 	for (int i = 0; i < aoKernel.length(); ++i) {
@@ -605,19 +1099,406 @@ float calcSSAO(vec3 normal, vec2 texcoord, sampler2D depthTex, sampler2D aoNoise
 		occlusion += (sampleDepth >= sample.z ? 1.0 : 0.0) * rangeCheck;
 	}
 
-	return 1.0 - (occlusion / aoKernel.length());
+	return clamp(1.0 - (SSAO_Strength * occlusion / aoKernel.length()), 0.0, 1.0);
 }
 #endif
 
-vec3 blendToFog(vec3 color, vec3 viewPos, vec3 skyFogColor) {
-    float distance = length(viewPos);
-    if(isEyeInWater == 0)
-        return mix(color, skyFogColor, eyeBrightnessSmooth.g / 240.0 * clamp((distance / far + mix(-0.1, 0.05, rainStrength)) * mix(0.8, 2.5, rainStrength), 0.0, 1.0));
-        // return mix(color, skyFogColor, eyeBrightnessSmooth.g / 240.0 * clamp(distance, 0.0, 1.0));
-    else if(isEyeInWater == 1)
-        return mix(color, 0.4 * fogColor, clamp(0.25 + 0.02 * distance, 0.0, 1.0));
+// vec3 calcReflection(vec3 startPos, vec3 normal, sampler2D depthTex) {
+//     float maxDistance = 15.0;
+//     float resolution = 0.5;
+//     int steps = 10;
+//     float thickness = 0.05;
+
+//     vec2 texSize = vec2(viewWidth, viewHeight);
+
+//     vec3 pivot = normalize(reflect(normalize(startPos), normal));
+
+//     vec3 viewPos = startPos;
+//     vec4 endPos = vec4(startPos + (pivot * maxDistance), 1.0);
+
+//     vec4 startFrag = gbufferProjection * vec4(startPos, 1.0);
+//     startFrag.xyz /= startFrag.w;
+//     startFrag.xy = startFrag.xy * 0.5 + 0.5;
+//     startFrag.xy *= texSize;
+
+//     vec4 endFrag = gbufferProjection * endPos;
+//     endFrag.xyz /= endFrag.w;
+//     endFrag.xy = endFrag.xy * 0.5 + 0.5;
+//     endFrag.xy *= texSize;
+
+//     vec2 frag = startFrag.xy;
+//     vec2 uv = frag / texSize;
+
+//     float deltaX = endFrag.x - startFrag.x;
+//     float deltaY = endFrag.y - startFrag.y;
+//     float useX = abs(deltaX) >= abs(deltaY) ? 1.0 : 0.0;
+//     float delta = mix(abs(deltaY), abs(deltaX), useX) * clamp(resolution, 0.0, 1.0);
+//     vec2 increment = vec2(deltaX, deltaY) / max(delta, 0.001);
+
+//     float search0 = 0.0;
+//     float search1 = 0.0;
+
+//     float hit0 = 0.0;
+//     float hit1 = 0.0;
+
+//     float viewDistance = startPos.z;
+//     float depth = thickness;
+
+
+//     for(int i = 10; i < 100; ++i) {
+//         frag += increment;
+//         uv = frag / texSize;
+//         viewPos = calcViewPos(uv, texture2D(depthTex, uv).r);
+
+//         search1 = mix((frag.y - startFrag.y) / deltaY, (frag.x - startFrag.x) / deltaX, useX);
+
+//         viewDistance = (startPos.z * endPos.z) / mix(endPos.z, startPos.z, search1);
+//         depth = viewDistance - viewPos.z;
+
+//         if(depth > 0 && depth < thickness) {
+//             hit0 = 1;
+//             break;
+//         }
+//         else {
+//             search0 = search1;
+//         }
+//     }
+
+//     search1 = search0 + ((search1 - search0) / 2.0);
+//     steps = int(steps * hit0);
+
+//     for(int i = 0; i < steps; ++i) {
+//         frag = mix(startFrag.xy, endFrag.xy, search1);
+//         uv = frag / texSize;
+//         viewPos = calcViewPos(uv, texture2D(depthTex, uv).r);
+
+//         viewDistance = (startPos.z * endPos.z) / mix(endPos.z, startPos.z, search1);
+//         depth = viewDistance - viewPos.z;
+
+//         if(depth > 0 && depth < thickness) {
+//             hit1 = 1;
+//             search1 = search0 + ((search1 - search0) / 2);
+//         }
+//         else {
+//             float temp = search1;
+//             search1 += ((search1 - search0) / 2);
+//             search0 = temp;
+//         }
+//     }
+
+//     float visibility = hit1;
+//                     // * (1.0 - max(dot(-normalize(startPos), pivot), 0.0))
+//                     // * (1.0 - clamp(depth / thickness, 0.0, 1.0))
+//                     // * (1.0 - clamp(length(endPos.xyz - startPos) / maxDistance, 0.0, 1.0))
+//                     // * (uv.x < 0 || uv.x > 1 ? 0 : 1)
+//                     // * (uv.y < 0 || uv.y > 1 ? 0 : 1);
+//     visibility = clamp(visibility, 0.0, 1.0);
+
+//     return vec3(uv, visibility);
+
+//     // return vec3(1.0, 0.0, 0.0);
+// }
+
+float reflectionFactor(vec3 specMap) {
+    return max(max(smoothstep(SSR_Bottom, SSR_Top, specMap.r), wetness), isEyeInWater*0.8);
+}
+
+vec3 calcSSR(vec3 viewSpacePos, vec3 reflectDir, sampler2D depthTex, sampler2D waterTex, bool isNotWater) {
+    // #ifdef SSR_Rough
+    //     normal = normalize(normal * (texture2D(noisetex, texcoord).rgb * 0.002 - 0.001));
+    // #endif
+
+    // vec3 reflectDir = reflect(normalize(viewSpacePos), normal);
+    
+    // vec2 screenSpacePos = texcoord;
+    // vec3 viewSpaceDir = normalize(viewSpacePos);
+
+    // vec3 reflectDir = normalize(reflect(viewSpaceDir, normal));
+    vec3 viewSpaceVector = .999 * reflectDir;
+    vec3 viewSpaceVectorFar = far * reflectDir;
+    vec3 viewSpaceVectorPos = viewSpacePos + viewSpaceVector;
+    vec3 currentPosition = viewSpaceToScreenSpace(viewSpaceVectorPos);
+
+    const int maxRefinements = 5;
+	int numRefinements = 0;
+	vec3 finalSamplePos = vec3(0.0/* , 0.0, -1.0 */);
+
+	int numSteps = 0;
+
+	float finalSampleDiff = 0.0;
+
+
+    for(int i = 0; i < 40; i++) {
+
+        if(-viewSpaceVectorPos.z > far * 1.4f ||
+           -viewSpaceVectorPos.z < 0.0f)
+        {
+		   break;
+		}
+
+        vec2 samplePos = currentPosition.xy;
+        float sampleDepth = calcViewPos(samplePos, texture2D(depthTex, samplePos).r).z;
+
+
+        float currentDepth = viewSpaceVectorPos.z;
+        float diff = sampleDepth - currentDepth;
+        float error = length(viewSpaceVector / pow(2.0, numRefinements));
+
+        if((isNotWater || texture2D(waterTex, samplePos).r != 1.0) && diff >= 0 && diff <= error * 2.0 && numRefinements <= maxRefinements) {
+            viewSpaceVectorPos -= viewSpaceVector / pow(2.0, numRefinements);
+            numRefinements++;
+        }
+        else if((isNotWater || texture2D(waterTex, samplePos).r != 1.0) && diff >= 0 && diff <= error * 4.0 && numRefinements > maxRefinements) {
+            finalSamplePos = vec3(samplePos, 1.0);
+            finalSampleDiff = diff;
+            break;
+        }
+        // else if(numRefinements > maxRefinements) {
+        //     finalSamplePos = vec3(samplePos, -1.0);
+        //     finalSampleDiff = diff;
+        //     break;
+        // }
+
+        viewSpaceVectorPos += viewSpaceVector / pow(2.0f, numRefinements);
+
+        if(numSteps > 1)
+            viewSpaceVector *= 1.375;
+
+        currentPosition = viewSpaceToScreenSpace(viewSpaceVectorPos);
+
+        if (currentPosition.x < 0 || currentPosition.x > 1 ||
+            currentPosition.y < 0 || currentPosition.y > 1 ||
+            currentPosition.z < 0 || currentPosition.z > 1)
+        {
+            break;
+        }
+        // currentPosition = clamp(currentPosition, vec3(0.001), vec3(0.999));
+
+        numSteps++;
+    }
+
+    // vec4 color = vec4(1.0);
+    // color.rgb = texture2D(colorTex, finalSamplePos).rgb;
+
+    /* if(finalSampleDiff < 0) {
+        finalSamplePos.z = -1.0;
+    }
+    else  */if (finalSamplePos.x == 0.0 || finalSamplePos.y == 0.0) {
+		finalSamplePos.z = 0.0;
+	}
+
+    // return color;
+    return finalSamplePos;
+}
+
+vec3 calcReflection(vec2 texcoord, vec3 viewSpacePos, vec3 normal, vec3 specMap, sampler2D depthTex, sampler2D waterTex, bool isNotWater) {
+    #ifdef SSR_Rough
+        float factor = mix(SSR_Max_Roughness, 0.0, smoothstep(SSR_Bottom, SSR_Top, specMap.r));
+        vec3 reflectDir = reflect(normalize(viewSpacePos), normalize(normal + vec3(texture2D(noisetex, 10.0 * texcoord).rg * factor - 0.5 * factor, 0.0)));
+    #else
+        vec3 reflectDir = reflect(normalize(viewSpacePos), normal);
+    #endif
+
+    return calcSSR(viewSpacePos, reflectDir, depthTex, waterTex, isNotWater);
+}
+
+vec3 calcRefraction(vec3 viewSpacePos, vec3 normal, vec3 geometryNorm, float refractionIndex, sampler2D depthTex, sampler2D waterTex) {
+    vec3 refractDir = normalize(refract(normalize(viewSpacePos), geometryNorm - normal, refractionIndex));
+
+    return calcSSR(viewSpacePos, refractDir, depthTex, waterTex, true);
+}
+
+vec3 waterRefraction(vec2 texcoord, vec3 viewPosWater, vec3 viewPosOpaque, vec3 normal) {
+    vec3 refractDir = normalize(refract(normalize(viewPosWater), /*viewSpaceToScreenSpace(*/normal/*)*/, 1.5));
+    float diff = length(viewPosWater - viewPosOpaque);
+
+    vec3 finalScreenPos = vec3(viewSpaceToScreenSpace(viewPosWater + refractDir));
+    // vec3 finalScreenPos = vec3(viewSpaceToScreenSpace(viewPosWater + 0.1 * diff * vec3(normal.xy, 0.0)));
+    // finalScreenPos.z = float(finalScreenPos.x >= 0.0 && finalScreenPos.x <= 1.0 && finalScreenPos.y >= 0.0 && finalScreenPos.y <= 1.0);
+
+    // finalScreenPos.xy = texcoord + 0.1 * normal.xy;
+
+    return vec3(finalScreenPos);
+}
+
+vec3 refractFixed(vec3 viewDir, vec3 normal, float rior) {
+    // float NdotI = dot(normal, viewDir);
+    // return (rior*NdotI - sqrt(1.0 - rior*rior * (1.0 - NdotI*NdotI))) * normal - rior * viewDir;
+
+    float k = 1.0 - rior * rior * (1.0 - dot(normal, viewDir) * dot(normal, viewDir));
+    if (k < 0.0)
+        return vec3(0.0);       // or genDType(0.0)
     else
-        return mix(color, vec3(0.85, 0.2, 0.0), clamp(0.5 + 0.08 * distance, 0.0, 1.0));
+        return rior * viewDir - (rior * dot(normal, viewDir) + sqrt(k)) * normal;
+}
+
+vec3 calcSSRRefraction(vec2 texcoord, vec3 viewSpacePos, vec3 normal, sampler2D depthTex) {
+    vec2 screenSpacePos = texcoord;
+    vec3 viewSpaceDir = normalize(viewSpacePos);
+    // vec3 viewSpaceDir = vec3(0.0, 0.0, 1.0);
+
+    vec3 reflectDir = normalize(refract(viewSpaceDir, normal, 1.2));
+    // vec3 reflectDir = normalize(viewSpaceDir + normal);
+    vec3 viewSpaceVector = .999 * reflectDir;
+    vec3 viewSpaceVectorFar = far * reflectDir;
+    vec3 viewSpaceVectorPos = viewSpacePos + viewSpaceVector;
+    vec3 currentPosition = viewSpaceToScreenSpace(viewSpaceVectorPos);
+
+    const int maxRefinements = 5;
+	int numRefinements = 0;
+    int count = 0;
+	vec3 finalSamplePos = vec3(0.0);
+
+	int numSteps = 0;
+
+	float finalSampleDepth = 0.0;
+
+
+    for(int i = 0; i < 40; i++) {
+
+        if(
+           -viewSpaceVectorPos.z > far * 1.4f ||
+           -viewSpaceVectorPos.z < 0.0f)
+        {
+		   break;
+		}
+
+        vec2 samplePos = currentPosition.xy;
+        float sampleDepth = calcViewPos(samplePos, texture2D(depthTex, samplePos).r).z;
+
+        float currentDepth = viewSpaceVectorPos.z;
+        float diff = sampleDepth - currentDepth;
+        float error = length(viewSpaceVector / pow(2.0, numRefinements));
+
+        if(diff >= 0 && diff <= error * 2.0 && numRefinements <= maxRefinements) {
+            viewSpaceVectorPos -= viewSpaceVector / pow(2.0, numRefinements);
+            numRefinements++;
+        }
+        else if(diff >= 0 && diff <= error * 4.0 && numRefinements > maxRefinements) {
+            finalSamplePos = vec3(samplePos, 1.0);
+            finalSampleDepth = sampleDepth;
+            break;
+        }
+
+        viewSpaceVectorPos += viewSpaceVector / pow(2.0f, numRefinements);
+
+        if(numSteps > 1)
+            viewSpaceVector *= 1.375;
+
+        currentPosition = viewSpaceToScreenSpace(viewSpaceVectorPos);
+
+        if (currentPosition.x < 0 || currentPosition.x > 1 ||
+            currentPosition.y < 0 || currentPosition.y > 1 ||
+            currentPosition.z < 0 || currentPosition.z > 1)
+        {
+            break;
+        }
+        // currentPosition = clamp(currentPosition, vec3(0.001), vec3(0.999));
+
+        count++;
+        numSteps++;
+    }
+
+    // vec4 color = vec4(1.0);
+    // color.rgb = texture2D(colorTex, finalSamplePos).rgb;
+
+    if (finalSamplePos.x == 0.0 || finalSamplePos.y == 0.0) {
+		finalSamplePos.z = 0.0;
+	}
+
+    // return color;
+    return finalSamplePos;
+}
+
+vec3 waterFogColor() {
+    // return vec3(0.0, 0.1, 0.25);
+    // return fogColor;
+    // return waterColor;
+    // return waterColors[waterColorIndex];
+
+    #if Water_Color == 0
+        return vec3(0.0, 0.1, 0.25);
+    #elif Water_Color == 1
+        return vec3(0.0, 0.1, 0.25);
+    #else
+        return vec3(0.07, 0.13, 0.3) / 0.7;
+    #endif
+}
+
+vec3 underWaterFogColor() {
+    #if Water_Color == 2
+        return vec3(0.07, 0.13, 0.3);
+    #else
+        return waterColor;
+    #endif
+}
+
+float blendTo(vec3 viewPos, int eyeInWater) {
+    // float distance = (length(viewPos) - near) / (far - near);
+    float distance = clamp(length(viewPos), near, far);
+    if(eyeInWater == 0) {
+        // return eyeBrightnessSmooth.g / 240.0 * clamp((distance / far + mix(-0.1, 0.05, rainStrength)) * mix(0.8, 2.5, rainStrength), 0.0, 1.0);
+        float fogExponent = mix(1.0 / (far * Fog_Factor), 0.025, rainStrength);
+        return clamp(1.0 - exp(-pow(distance * fogExponent, 2.0)), 0.0, 1.0);
+        // return distance;
+    }
+    else if(eyeInWater == 1)
+        // return clamp(0.4 + 0.02 * distance, 0.0, 1.0);
+        return clamp(1.0 - exp(-0.08 * distance), 0.0, 1.0);
+        // return mix(color, lightmapSky(eyeBrightnessSmooth.y / 240.0 * 0.4 + 0.6) * vec3(0.0, 0.1, 0.25), clamp(0.4 + 0.02 * distance, 0.0, 1.0));
+    else
+        return clamp(0.5 + 0.08 * distance, 0.0, 1.0);
+}
+
+vec3 blendToFog(vec3 color, vec3 viewPos, int eyeInWater, vec3 skyFogColor, vec2 lmcoord) {
+    float fogAmount = blendTo(viewPos, eyeInWater);
+    if(eyeInWater == 0)
+        return mix(color, skyFogColor, fogAmount);
+        // return mix(color, skyFogColor, eyeBrightnessSmooth.g / 240.0 * clamp(distance, 0.0, 1.0));
+    else if(eyeInWater == 1)
+        return mix(color, underWaterFogColor() * lightmapSky(eyeBrightnessSmooth.y / 240.0 * 0.4 + 0.6) /* (eyeBrightness.y / 240.0 * 0.6 + 0.8) */, fogAmount);
+        // return mix(color, lightmapSky(eyeBrightnessSmooth.y / 240.0 * 0.4 + 0.6) * vec3(0.0, 0.1, 0.25), clamp(0.4 + 0.02 * distance, 0.0, 1.0));
+    else
+        return mix(color, vec3(0.85, 0.2, 0.0), fogAmount);
+}
+
+vec3 advancedFog(vec3 fragColor, vec3 viewPos, int eyeInWater) {
+    float distance = clamp(length(viewPos), near, far);
+    // float distance = 1.0 - ((length(viewPos) - near) / (far - near));
+
+    vec3 be;
+    vec3 bi;
+
+    if(eyeInWater == 0) {
+        be = vec3(0.005);
+        bi = vec3(0.005);
+    }
+    else if(eyeInWater == 1) {
+        be = vec3(0.1, 0.2, 0.5);
+        bi = vec3(0.1, 0.2, 0.5);
+    }
+    else {
+        be = vec3(1.0, 0.5, 0.0);
+        bi = vec3(1.0, 0.5, 0.0);
+    }
+
+    vec3 extColor = vec3( exp(-distance*be.x), exp(-distance*be.y), exp(-distance*be.z) );
+    vec3 insColor = vec3( exp(-distance*bi.x), exp(-distance*bi.y), exp(-distance*bi.z) );
+
+    vec3 sunDir = normalize(shadowLightPosition);
+    float sunAmount = max( dot( normalize(viewPos), sunDir ), 0.0 );
+    vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // bluish
+                           vec3(1.0,0.9,0.7), // yellowish
+                           pow(sunAmount,8.0) );
+
+    return fragColor*(extColor) + fogColor*(1.0-insColor);
+}
+
+vec3 waterFog(vec3 color, float lightMapSky, vec3 viewPos, vec3 waterViewPos, float upDot) {
+    float distance = length(viewPos - waterViewPos);
+    // float fogAmount = clamp(0.4 + 0.02 * distance, 0.0, 1.0);
+    float fogAmount = clamp(1.0 - exp(-0.08 * distance), 0.0, 1.0);
+    return mix(color, lightmapSky(lightMapSky) * waterFogColor(), fogAmount);
 }
 
 float getBlockType(in float entity) {
@@ -648,7 +1529,22 @@ float getBlockType(in float entity) {
     return -1.0;
 }
 
-vec3 waveOffset(float blockType, vec4 vertex, vec2 texcoord, vec2 mc_midTexCoord, vec3 normal) {
+float waveFunction(vec2 pos, float time, float amplitude, float frequency, float speed, vec2 direction) {
+    // return amplitude * pow((sin(dot(pos, direction) * frequency + time * speed) + 1.0) / 2.0, k);
+    return amplitude * (sin(dot(pos, direction) * frequency + time * speed) + 1.0) / 2.0;
+}
+
+vec2 waveFunctionDeriv(vec2 pos, float time, float amplitude, float frequency, float speed, vec2 direction) {
+    // float partialX = k * direction.x * frequency * amplitude * pow((sin(dot(pos, direction) * frequency + time * speed) + 1.0) / 2.0, k-1) * cos(dot(pos, direction) * frequency + time * speed);
+    // float partialZ = k * direction.y * frequency * amplitude * pow((sin(dot(pos, direction) * frequency + time * speed) + 1.0) / 2.0, k-1) * cos(dot(pos, direction) * frequency + time * speed);
+    
+    float partialX = direction.x * frequency * amplitude * cos(dot(pos, direction) * frequency + time * speed);
+    float partialZ = direction.y * frequency * amplitude * cos(dot(pos, direction) * frequency + time * speed);
+
+    return 0.5 * Water_Depth * vec2(partialX, partialZ);
+}
+
+vec3 waveOffset(float blockType, vec3 vertex, vec2 texcoord, vec2 mc_midTexCoord, vec3 normal) {
 
     if(blockType < 0.0)
         return vec3(0.0);
@@ -763,6 +1659,70 @@ vec3 waveOffset(float blockType, vec4 vertex, vec2 texcoord, vec2 mc_midTexCoord
     return vec3(0.0);
 }
 
+float vineWaveHeight(float verticalPos) {
+    return 0.5 * mix(sin(verticalPos + frameTimeCounter * PI * 0.5), sin(verticalPos + frameTimeCounter * PI * 2.0), rainStrength) + 0.5;
+}
+
+float waterWaveOffset(vec2 horizontalPos) {
+    // float offset = 0.6 * cos(.25 * PI * horizontalPos.x + .125 * PI * horizontalPos.y + 2.0 * frameTimeCounter)
+    //                     + 0.35 * sin(.75 * PI * horizontalPos.x + .25 * PI * horizontalPos.y + 3.0 * frameTimeCounter)
+    //                     + 0.05 * cos(1.5 * PI * horizontalPos.x + PI * horizontalPos.y + 4.0 * frameTimeCounter);
+
+    // float offset =        0.5*abs(cos(.25*PI*horizontalPos.x + .125*PI*horizontalPos.y + 2.0*frameTimeCounter))
+    //                     + 0.3*abs(sin(.75*PI*horizontalPos.x + .25*PI*horizontalPos.y + 3.0*frameTimeCounter))
+    //                     + 0.2*abs(cos(1.5*PI*horizontalPos.x + PI*horizontalPos.y + 4.0*frameTimeCounter));
+
+    // float offset =    waveFunction(horizontalPos, frameTimeCounter, 0.4, 1, PI / 2.0, vec2(0.26749, 0.96355), Water_K)
+    //                 + waveFunction(horizontalPos, frameTimeCounter, 0.3, 2, PI / 2.0, vec2(-0.84810, -0.52983), Water_K)
+    //                 + waveFunction(horizontalPos, frameTimeCounter, 0.2, 4, PI, vec2(0.90044, 0.43496), Water_K)
+    //                 + waveFunction(horizontalPos, frameTimeCounter, 0.1, 6, PI, vec2(0.92747, -0.37387), Water_K);
+
+    float offset =  + waveFunction(horizontalPos, frameTimeCounter, 0.6, 1, PI / 3.0, waveDirs[0])
+                    + waveFunction(horizontalPos, frameTimeCounter, 0.1, 1, PI / 1.25, waveDirs[1])
+                    + waveFunction(horizontalPos, frameTimeCounter, 0.1, 2, PI, waveDirs[2])
+                    + waveFunction(horizontalPos, frameTimeCounter, 0.1, 4, PI / 0.75, waveDirs[3])
+                    + waveFunction(horizontalPos, frameTimeCounter, 0.1, 6, PI / 0.5, waveDirs[4]);
+
+    // float offset =  waveFunction(horizontalPos, frameTimeCounter, 1.0, 1.0, PI / 4.0, vec2(-0.65364, -0.75680), 1.0);
+
+    // float offset = abs(sin(horizontalPos.x + horizontalPos.y + frameTimeCounter));
+        
+    // float offsetRain = 0.6 * cos(.25 * PI * horizontalPos.x + .125 * PI * horizontalPos.y + 6.0 * frameTimeCounter)
+    //                 + 0.35 * sin(.75 * PI * horizontalPos.x + .25 * PI * horizontalPos.y + 9.0 * frameTimeCounter)
+    //                 + 0.05 * cos(1.5 * PI * horizontalPos.x + PI * horizontalPos.y + 12.0 * frameTimeCounter);
+    
+    #ifdef Water_Noise
+        return mix(offset, 0.5, texture2D(noisetex, 0.05 * horizontalPos + vec2(0.01 * frameTimeCounter)).a * 0.2);
+    #else
+        return offset;
+    #endif
+    // return 1.0 - texture2D(noisetex, 0.02 * horizontalPos + vec2(0.01 * frameTimeCounter)).a;
+}
+
+vec3 waterNormal(vec2 horizontalPos) {
+    // vec2 partials = waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.4, 1, PI / 2.0, vec2(0.26749, 0.96355), Water_K);
+    // partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.3, 2, PI / 2.0, vec2(-0.84810, -0.52983), Water_K);
+    // partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.2, 4, PI, vec2(0.90044, 0.43496), Water_K);
+    // partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.1, 6, PI, vec2(0.92747, -0.37387), Water_K);
+
+    vec2 partials = waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.6, 1, PI / 3.0, waveDirs[0]);
+    partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.1, 1, PI / 1.25, waveDirs[1]);
+    partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.1, 2, PI, waveDirs[2]);
+    partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.1, 4, PI / 0.75, waveDirs[3]);
+    partials += waveFunctionDeriv(horizontalPos, frameTimeCounter, 0.1, 6, PI / 0.5, waveDirs[4]);
+
+    // vec2 partials = waveFunctionDeriv(horizontalPos, frameTimeCounter, 1.0, 1.0, PI / 4.0, vec2(-0.65364, -0.75680), 1.0);
+    
+    #ifdef Water_Noise
+        vec4 noiseVal = texture2D(noisetex, 0.05 * horizontalPos + vec2(0.01 * frameTimeCounter));
+        return normalize(mix(vec3(0.2 * partials, 1.0), vec3(-Water_Depth, -Water_Depth, 1.0) * (noiseVal.rgb * 2.0 - 1.0), noiseVal.a * 0.2));
+    #else
+        return vec3(Water_Depth * partials, 1.0);
+    #endif
+    
+    // return normalize(vec3(0.5*Water_Depth, 0.5*Water_Depth, 1.0) * (texture2D(noisetex, 0.02 * horizontalPos + vec2(0.01 * frameTimeCounter)).rgb * 2.0 - 1.0));
+}
+
 vec3 getNormal(in vec2 position, in float blockType/*, in vec2 mc_midTexCoord*/) {
 
     //return vec3(mod(frameTimeCounter, 1.0));
@@ -794,11 +1754,6 @@ vec3 getNormal(in vec2 position, in float blockType/*, in vec2 mc_midTexCoord*/)
         
         float partialZRain = 0.04 * (-0.5 * PI * sin((position.y + frameTimeCounter) * 0.5 * PI) * cos((position.x + frameTimeCounter) * PI)
                             - 0.75 * PI * cos((position.y + frameTimeCounter) * -0.75 * PI));*/
-
-        /*float offset = 0.1 * cos(.25 * PI * gl_Vertex.x + .125 * PI * gl_Vertex.z + 2.0 * frameTimeCounter)
-                        + 0.04 * sin(.75 * PI * gl_Vertex.x + .25 * PI * gl_Vertex.z + 3.0 * frameTimeCounter)
-                        + 0.005 * cos(1.5 * PI * gl_Vertex.x + PI * gl_Vertex.z + 4.0 * frameTimeCounter)
-                        - 0.2;*/
         
         float partialX = (-.015 * PI * sin(.25 * PI * position.x + .125 * PI * position.y + 2.0 * frameTimeCounter)
                         + .03 * PI * cos(.75 * PI * position.x + .25 * PI * position.y + 3.0 * frameTimeCounter)
@@ -821,6 +1776,18 @@ vec3 getNormal(in vec2 position, in float blockType/*, in vec2 mc_midTexCoord*/)
                         + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.13 * frameTimeCounter, 0.1 * PI * position.y - 0.10 * frameTimeCounter)).r
                         + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x - 0.17 * frameTimeCounter, 0.1 * PI * position.y + 0.06 * frameTimeCounter)).r
                         + .05 * texture2D(noisetex, vec2(0.1 * PI * position.x + 0.08 * frameTimeCounter, 0.1 * PI * position.y - 0.15 * frameTimeCounter)).r*/;
+
+        // float offset =        0.5*abs(cos(.25*PI*horizontalPos.x + .125*PI*horizontalPos.y + 2.0*frameTimeCounter))
+        //                 + 0.3*abs(sin(.75*PI*horizontalPos.x + .25*PI*horizontalPos.y + 3.0*frameTimeCounter))
+        //                 + 0.2*abs(cos(1.5*PI*horizontalPos.x + PI*horizontalPos.y + 4.0*frameTimeCounter));
+
+        // float partialX =    - 0.125*PI * sign(cos(.25*PI*position.x + .125*PI*position.y + 2.0*frameTimeCounter)) * sin(.25*PI*position.x + .125*PI*position.y + 2.0*frameTimeCounter)
+        //                     + 0.225*PI * sign(sin(.75*PI*position.x + .25*PI*position.y + 3.0*frameTimeCounter)) * cos(.75*PI*position.x + .25*PI*position.y + 3.0*frameTimeCounter)
+        //                     - 0.3*PI * sign(cos(1.5*PI*position.x + PI*position.y + 4.0*frameTimeCounter)) * sin(1.5*PI*position.x + PI*position.y + 4.0*frameTimeCounter);
+
+        // float partialZ =    - 0.0625*PI * sign(cos(.25*PI*position.x + .125*PI*position.y + 2.0*frameTimeCounter)) * sin(.25*PI*position.x + .125*PI*position.y + 2.0*frameTimeCounter)
+        //                     + 0.075*PI * sign(sin(.75*PI*position.x + .25*PI*position.y + 3.0*frameTimeCounter)) * cos(.75*PI*position.x + .25*PI*position.y + 3.0*frameTimeCounter)
+        //                     - 0.2*PI * sign(cos(1.5*PI*position.x + PI*position.y + 4.0*frameTimeCounter)) * sin(1.5*PI*position.x + PI*position.y + 4.0*frameTimeCounter);
         
         float partialXRain = -.015 * PI * sin(.25 * PI * position.x + .125 * PI * position.y + 6.0 * frameTimeCounter)
                             + .03 * PI * cos(.75 * PI * position.x + .25 * PI * position.y + 9.0 * frameTimeCounter)
@@ -929,4 +1896,26 @@ vec3 getNormal(in vec2 position, in float blockType/*, in vec2 mc_midTexCoord*/)
                         mix(0.05, 0.08, rainStrength) * clamp((pow(cos((position.y + frameTimeCounter) * PI * 0.25), 2.0) - 0.5) * mix(1.0, sin(position.y + frameTimeCounter * PI * 2.0), rainStrength) - 0.5, -0.7, 0.7));
     }
     #endif*/
+}
+
+vec3 ParallaxMappingWater(vec2 vertexPos, vec3 viewDir) {
+	float layerDepth = 1.0 / Water_POM_Layers;
+	float currentLayerDepth = 0.0;
+    vec2 p = (viewDir.xy / viewDir.z) * Water_Depth;
+    vec2 deltaTexCoords = p / Water_POM_Layers;
+
+	vec2  currentTexcoord = vertexPos;
+	float currentDepthMapValue = waterWaveOffset(currentTexcoord);
+	
+	while(currentLayerDepth < currentDepthMapValue)
+	{
+		// shift texture coordinates along direction of P
+		currentTexcoord -= deltaTexCoords;
+		// get depthmap value at current texture coordinates
+		currentDepthMapValue = waterWaveOffset(currentTexcoord);
+		// get depth of next layer
+		currentLayerDepth += layerDepth;
+	}
+
+	return vec3(currentTexcoord, -(currentLayerDepth - layerDepth) * Water_Depth);
 }

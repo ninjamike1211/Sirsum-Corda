@@ -1,5 +1,7 @@
 #version 120
 
+#define Combine_Normal_Buffers
+
 uniform sampler2D lightmap;
 uniform sampler2D texture;
 #ifdef MC_NORMAL_MAP
@@ -20,7 +22,13 @@ void main() {
 	// color *= texture2D(lightmap, lmcoord);
 
 	gl_FragData[0] = color; //gcolor
-	gl_FragData[1] = vec4(normal * 0.5f + 0.5f, 1.0);
+	#ifdef Combine_Normal_Buffers
+		gl_FragData[1] = vec4(normal.xy * 0.5f + 0.5f, normal.xy * 0.5f + 0.5f);
+	#else
+		gl_FragData[1] = vec4(normal * 0.5f + 0.5f, 1.0);
+		gl_FragData[2] = vec4(normal * 0.5f + 0.5f, 1.0);
+	#endif
+
 	// gl_FragData[2] = vec4(viewPos);
 	gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
 	#ifdef MC_SPECULAR_MAP

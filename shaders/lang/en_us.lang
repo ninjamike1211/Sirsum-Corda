@@ -1,8 +1,12 @@
 value.SSAO.0=off
-value.SSAO.1=low
-value.SSAO.2=medium
-value.SSAO.3=high
-value.SSAO.4=ultra
+value.SSAO.1=opaque
+value.SSAO.2=everything_front
+value.SSAO.3=everything
+
+value.SSAO_Quality.0=low
+value.SSAO_Quality.1=medium
+value.SSAO_Quality.2=high
+value.SSAO_Quality.3=ultra
 
 value.Shadow_Filter.0=off
 value.Shadow_Filter.1=low
