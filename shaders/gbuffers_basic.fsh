@@ -1,22 +1,17 @@
-#version 120
+#version 400 compatibility
 
-// uniform sampler2D lightmap;
-uniform vec3 sunPosition;
+/* RENDERTARGETS: 0 */
+layout(location = 0) out vec4 albedo;
+layout(location = 1) out vec3 normal;
 
-varying vec2 lmcoord;
-varying vec4 glcolor;
-varying vec3 normal;
+in vec4 glColor;
+flat in vec3 glNormal;
+
+uniform float alphaTestRef;
 
 void main() {
-	vec4 color = glcolor;
-	// color *= texture2D(lightmap, lmcoord);
+    albedo = glColor;
+    if (albedo.a < alphaTestRef) discard;
 
-/* DRAWBUFFERS:012345 */
-	gl_FragData[0] = vec4(color.rgb, 1.0); //gcolor
-	gl_FragData[1] = vec4(normalize(sunPosition), 1.0);
-	gl_FragData[2] = vec4(normalize(sunPosition), 1.0);
-	gl_FragData[3] = vec4(lmcoord, 0.0, 1.0);
-	gl_FragData[4] = vec4(0.0, 0.0, 0.0, 1.0);
-	gl_FragData[5] = vec4(0.0, 1.0, 0.0, 1.0);
-	// gl_FragData[1] = vec4(1.0);
+    normal = glNormal * 0.5 + 0.5;
 }

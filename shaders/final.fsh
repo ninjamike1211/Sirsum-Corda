@@ -1,11 +1,9 @@
 #version 120
 
 #define viewBuffer off //[off 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 -1 -2 -3]
-
-#include "include.glsl"
+#include "functions.glsl"
 
 varying vec2 TexCoords;
-varying vec3 viewVector;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
@@ -25,7 +23,7 @@ uniform sampler2D colortex14;
 uniform sampler2D colortex15;
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
-// uniform sampler2D shadowtex0;
+uniform sampler2D shadowtex0;
 
 void main() {
     #if viewBuffer == 0
@@ -71,5 +69,10 @@ void main() {
     // float emissiveness = texture2D(colortex4, TexCoords).a;
     // gl_FragData[0] = vec4(vec3(emissiveness * float(emissiveness != 1.0)), 1.0);
     // gl_FragData[0] = vec4(vec3(length(texture2D(colortex2, TexCoords).rgb * 2.0 - 1.0)), 1.0);
-    // gl_FragData[0] = vec4(vec3(1.0, 1.0, 1.0) * calcViewPos(viewVector, texture2D(depthtex0, TexCoords).r), 1.0);
+    // gl_FragData[0] = vec4(decodeNormal(texture2D(colortex1, TexCoords).zw), 1.0);
+    // gl_FragData[0] = vec4(texture2D(colortex2, TexCoords).xyz * 2.0 - 1.0, 1.0);
+
+    // gl_FragData[0] = vec4(vec3(texture2D(colortex0, TexCoords).a), 1.0);
+
+    // gl_FragData[0] = vec4(vec3(1.0 - abs(snoise(TexCoords * 10))), 1.0);
 }

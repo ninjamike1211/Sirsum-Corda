@@ -1,39 +1,39 @@
-#version 120
+#version 400 compatibility
 
-#include "include.glsl"
+uniform float viewWidth;
+uniform float viewHeight;
+uniform vec3 skyColor;
+uniform vec3 cameraPosition;
+uniform mat4 gbufferProjectionInverse;
+uniform mat4 gbufferModelView;
+uniform mat4 gbufferModelViewInverse;
 
-uniform vec3 moonPosition;
-
-varying vec4 starData; //rgb = star color, a = flag for weather or not this pixel is a star.
-varying vec3 sunColor;
-varying vec3 sunBlurColor;
-varying vec3 topSkyColor;
-varying vec3 bottomSkyColor;
-varying vec3 sunPosNorm;
-varying vec3 upPosition;
-// varying vec4 glcolor;
+layout(location = 0) out vec3 color;
 
 void main() {
-	vec3 color;
+    color = skyColor;
 
-	// gl_FragDepth = 0.0;
+    // vec2 screenPos = gl_FragCoord.xy / vec2(viewWidth, viewHeight) * 2.0 - 1.0;
+    // vec4 viewPosTemp = gbufferProjectionInverse * vec4(screenPos, 1.0, 1.0);
+    // vec3 viewDir = normalize(viewPosTemp.xyz / viewPosTemp.w);
+    
+    // // vec4 playerPos = gbufferModelViewInverse * vec4(viewDir, 1.0);
+    // vec3 playerPos = mat3(gbufferModelViewInverse) * viewDir;
 
-	vec4 pos = vec4(gl_FragCoord.xy / vec2(viewWidth, viewHeight) * 2.0 - 1.0, 1.0, 1.0);
-	pos = gbufferProjectionInverse * pos;
-	vec3 baseColor = getSkyColor(normalize(pos.xyz), topSkyColor, bottomSkyColor, sunColor, sunBlurColor, sunPosNorm, upPosition, timeFactor, false);
-	// vec3 baseColor = vec3(0.5);
+    // // playerPos.y -= 70 - cameraPosition.y;
+    // vec3 yNormalizedPlayerPos = playerPos.xyz / playerPos.y;
+    // yNormalizedPlayerPos -= yNormalizedPlayerPos * (256 - cloudHeight + cameraPosition.y) / 256.0;
+    // yNormalizedPlayerPos += cameraPosition / 256.0;
 
-	// starData = vec4(0.0);
+    // if(abs(yNormalizedPlayerPos.x) < 1.0 && abs(yNormalizedPlayerPos.z) < 1.0 && sign(cloudHeight - cameraPosition.y) * playerPos.y >= 0.0) {
+    //     color = vec3(1.0);
+    //     gl_FragDepth = -1.0;
+    // }
+    // else {
+    //     color = vec3(0.0);
+    //     gl_FragDepth = 1.0;
+    // }
 
-	if (starData.a > 0.5) {
-		baseColor = vec3(0.0);
-		color = starData.rgb;
-	}
-	else {
-		color = baseColor;
-	}
-
-/* RENDERTARGETS: 0,11 */
-	gl_FragData[0] = vec4(color, 1.0); //gcolor
-	gl_FragData[1] = vec4(baseColor, 1.0);
+    // color = playerPos.xyz;
+    // color = vec3(dot(pos.xyz, gbufferModelView[1].xyz));
 }

@@ -1,13 +1,11 @@
-#version 120
+#version 400 compatibility
 
-varying vec2 lmcoord;
-varying vec4 glcolor;
-varying vec3 normal;
+out vec4 glColor;
+flat out vec3 glNormal;
 
 void main() {
-	lmcoord  = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
-	glcolor = gl_Color;
-	normal = gl_NormalMatrix * gl_Normal;
+    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
 
-	gl_Position = ftransform();
+    glColor = gl_Color;
+    glNormal = (gl_ModelViewMatrix * vec4(gl_Normal, 0.0)).xyz;
 }
