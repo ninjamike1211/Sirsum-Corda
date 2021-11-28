@@ -4,7 +4,7 @@
 const int colortex1Format = RGBA16;
 */
 const int shadowMapResolution = 2048;
-const float sunPathRotation = -40;
+const float sunPathRotation = -20;
 const float shadowDistance = 120;
 
 #define Shadow_Distort_Factor 0.1
@@ -12,6 +12,18 @@ const float shadowDistance = 120;
 
 uniform mat4 gbufferProjection;
 
+// https://www.titanwolf.org/Network/q/bb468365-7407-4d26-8441-730aaf8582b5/x
+vec4 linearToSRGB(vec4 linear) {
+    vec4 higher = (pow(abs(linear), vec4(1.0 / 2.4)) * 1.055) - 0.055;
+    vec4 lower  = linear * 12.92;
+    return mix(higher, lower, step(linear, vec4(0.0031308)));
+}
+
+vec4 sRGBToLinear(vec4 sRGB) {
+    vec4 higher = pow((sRGB + 0.055) / 1.055, vec4(2.4));
+    vec4 lower  = sRGB / 12.92;
+    return mix(higher, lower, step(sRGB, vec4(0.04045)));
+}
 
 float cubeLength(vec2 v) {
 	return pow(abs(v.x * v.x * v.x) + abs(v.y * v.y * v.y), 1.0 / 3.0);

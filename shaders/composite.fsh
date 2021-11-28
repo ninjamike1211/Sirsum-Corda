@@ -1,8 +1,10 @@
 #version 400 compatibility
 
 #include "functions.glsl"
+#include "sky.glsl"
 
 #define Shadow_Filter 2
+#define cloudsEnable
 #define lowCloudHeight 600
 #define highCloudHeight 1600
 #define lowCloudNormalMult 0.08
@@ -22,6 +24,7 @@ uniform sampler2D shadowtex1;
 uniform sampler2D shadowcolor0;
 uniform sampler2D noisetex;
 uniform vec3 shadowLightPosition;
+uniform vec3 sunPosition;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
@@ -34,6 +37,7 @@ uniform float frameTimeCounter;
 uniform float far;
 uniform float rainStrength;
 uniform float wetness;
+uniform float eyeAltitude;
 uniform int worldTime;
 
 in vec2 texcoord;
@@ -125,6 +129,14 @@ void main() {
     float depth = texture2D(depthtex0, texcoord).r;
     vec3 viewPos = calcViewPos(viewVector, depth);
 
+    if(depth == 1.0) {
+        albedo.rgb = skyColor(normalize(viewPos), normalize(sunPosition), eyeAltitude, mat3(gbufferModelViewInverse));
+        
+        // vec3 eyeDir = mat3(gbufferModelViewInverse) * normalize(viewPos);
+        // vec3 sunEyeDir = mat3(gbufferModelViewInverse) * normalize(sunPosition);
+        // albedo.rgb = skyColor2(eyeDir, sunEyeDir, eyeAltitude);
+    }
+
     // vec3 normal = Decode(texture2D(colortex1, texcoord).xy);
     // vec3 normal = texture2D(colortex2, texcoord).xyz * 2.0 - 1.0;
     vec3 normal = NormalDecode(texture2D(colortex1, texcoord).xy);
@@ -166,73 +178,76 @@ void main() {
         albedo.rgb *= skyLight + skyAmbient + torchAmbient;
     }
 
-    vec3 playerRayDir = mat3(gbufferModelViewInverse) * normalize(viewPos); // playerspace ray direction
-    vec3 cloudPos = playerRayDir.xyz / playerRayDir.y; // y-normalized playerspace ray direction
-    
-    vec3 cloudPosHigh = cloudPos * (highCloudHeight - cameraPosition.y);
-    cloudPosHigh.xz += cameraPosition.xz;
+    #ifdef cloudsEnable
+        vec3 playerRayDir = mat3(gbufferModelViewInverse) * normalize(viewPos); // playerspace ray direction
+        vec3 cloudPos = playerRayDir.xyz / playerRayDir.y; // y-normalized playerspace ray direction
+        
+        vec3 cloudPosHigh = cloudPos * (highCloudHeight - cameraPosition.y);
+        cloudPosHigh.xz += cameraPosition.xz;
 
-    if((depth == 1.0 || length(cloudPosHigh - vec3(cameraPosition.x, 0.0, cameraPosition.z)) < length(viewPos)) /* && abs(cloudPos.x) < 1.0 && abs(cloudPos.z) < 1.0 */ && sign(highCloudHeight - cameraPosition.y) == sign(playerRayDir.y)) {
-        vec3 noise = 0.61 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.0009 + 0.03 * frameTimeCounter);
-        noise += 0.26 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.003 + 0.07 * vec2(1.0, -1.0) * frameTimeCounter);
-        noise += 0.08 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.01 - 0.1 * frameTimeCounter);
-        noise += 0.05 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.03 + 0.1 * vec2(-1.0, 1.0) * frameTimeCounter);
+        if((depth == 1.0 || length(cloudPosHigh - vec3(cameraPosition.x, 0.0, cameraPosition.z)) < length(viewPos)) /* && abs(cloudPos.x) < 1.0 && abs(cloudPos.z) < 1.0 */ && sign(highCloudHeight - cameraPosition.y) == sign(playerRayDir.y)) {
+            vec3 noise = 0.61 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.0009 + 0.03 * frameTimeCounter);
+            noise += 0.32 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.003 + 0.07 * vec2(1.0, -1.0) * frameTimeCounter);
+            noise += 0.06 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.01 - 0.1 * frameTimeCounter);
+            noise += 0.01 * SimplexPerlin2D_Deriv(cloudPosHigh.xz * 0.03 + 0.1 * vec2(-1.0, 1.0) * frameTimeCounter);
 
-        float density = noise.x * 0.63 + 0.63;
-        vec3 noiseNormal = extractNormalZ(highCloudNormalMult * -noise.yz).xzy;
-        noiseNormal *= sign(highCloudHeight - cameraPosition.y);
-        noiseNormal = (gbufferModelView * vec4(noiseNormal, 1.0)).xyz;
-        float cloudDotL = dot(noiseNormal, normalize(shadowLightPosition));
-
-        vec3 cloudColor = skyLightColor(worldTime, rainStrength) * (abs(cloudDotL) * 0.5 + 0.5);
-        float cloudAlpha = smoothstep(1.0 - wetness, 5.0 - 3.8*wetness, exp(density)) * smoothstep(far*70, far, length(cloudPosHigh.xz + cameraPosition.xz));
-
-        albedo.rgb = mix(albedo.rgb, cloudColor, cloudAlpha);
-    }
-
-
-    vec3 cloudPosLow = cloudPos * (lowCloudHeight - cameraPosition.y);
-    cloudPosLow.xz += cameraPosition.xz;
-
-    if((depth == 1.0 || length(cloudPosLow - vec3(cameraPosition.x, 0.0, cameraPosition.z)) < length(viewPos)) /* && abs(cloudPos.x) < 1.0 && abs(cloudPos.z) < 1.0 */ && sign(lowCloudHeight - cameraPosition.y) == sign(playerRayDir.y)) {
-        vec3 noise = 0.52 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.0004 + 0.02 * frameTimeCounter);
-        noise += 0.36 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.0009 + 0.03 * frameTimeCounter);
-        noise += 0.12 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.003 + 0.07 * vec2(1.0, -1.0) * frameTimeCounter + 0.06);
-        noise += 0.02 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.01 - 0.1 * frameTimeCounter);
-
-        float density = noise.x * .745 + .745;
-        vec3 noiseNormal = extractNormalZ(lowCloudNormalMult * -noise.yz).xzy;
-        noiseNormal *= sign(lowCloudHeight - cameraPosition.y);
-        noiseNormal = (gbufferModelView * vec4(noiseNormal, 1.0)).xyz;
-        float cloudDotL = dot(noiseNormal, normalize(shadowLightPosition));
-
-        vec3 cloudColor = skyLightColor(worldTime, rainStrength) * (abs(cloudDotL) * 0.5 + 0.5);
-        float cloudAlpha = smoothstep(2.1 - 2.1*wetness, 3.3 - 0.7*wetness, exp(density)) * smoothstep(far*35, far, length(cloudPosLow.xz + cameraPosition.xz));
-
-        albedo.rgb = mix(albedo.rgb, cloudColor, cloudAlpha);
-    }
-
-    #ifdef cloudDualLayer
-        vec3 cloudPosLow2 = cloudPos * (lowCloud2Height - cameraPosition.y);
-        cloudPosLow2.xz += cameraPosition.xz;
-
-        if((depth == 1.0 || length(cloudPosLow2 - vec3(cameraPosition.x, 0.0, cameraPosition.z)) < length(viewPos)) /* && abs(cloudPos.x) < 1.0 && abs(cloudPos.z) < 1.0 */ && sign(lowCloud2Height - cameraPosition.y) == sign(playerRayDir.y)) {
-            vec3 noise = 0.52 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.0004 + 0.02 * frameTimeCounter);
-            noise += 0.36 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.0009 + 0.03 * frameTimeCounter);
-            noise += 0.12 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.003 + 0.07 * vec2(1.0, -1.0) * frameTimeCounter + 0.06);
-            noise += 0.02 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.01 - 0.1 * frameTimeCounter);
-
-            float density = noise.x * .745 + .745;
-            vec3 noiseNormal = extractNormalZ(lowCloudNormalMult * -noise.yz).xzy;
-            noiseNormal *= sign(lowCloud2Height - cameraPosition.y);
-            noiseNormal = (gbufferModelView * vec4(noiseNormal, 1.0)).xyz;
+            float density = noise.x * 0.63 + 0.63;
+            vec3 noiseNormal = extractNormalZ(highCloudNormalMult * -noise.yz).xzy;
+            noiseNormal *= sign(highCloudHeight - cameraPosition.y);
+            noiseNormal = mat3(gbufferModelView) * noiseNormal;
             float cloudDotL = dot(noiseNormal, normalize(shadowLightPosition));
 
             vec3 cloudColor = skyLightColor(worldTime, rainStrength) * (abs(cloudDotL) * 0.5 + 0.5);
-            float cloudAlpha = smoothstep(2.1 - 2.1*wetness, 3.3 - 0.7*wetness, exp(density)) * smoothstep(far*35, far, length(cloudPosLow2.xz + cameraPosition.xz));
+            float cloudAlpha = smoothstep(1.5 - wetness, 6.0 - 3.8*wetness, exp(density)) * smoothstep(far*100, far, length(cloudPosHigh.xz + cameraPosition.xz));
 
             albedo.rgb = mix(albedo.rgb, cloudColor, cloudAlpha);
         }
+
+
+        vec3 cloudPosLow = cloudPos * (lowCloudHeight - cameraPosition.y);
+        cloudPosLow.xz += cameraPosition.xz;
+
+        if((depth == 1.0 || length(cloudPosLow - vec3(cameraPosition.x, 0.0, cameraPosition.z)) < length(viewPos)) /* && abs(cloudPos.x) < 1.0 && abs(cloudPos.z) < 1.0 */ && sign(lowCloudHeight - cameraPosition.y) == sign(playerRayDir.y)) {
+            vec3 noise = 0.52 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.0004 + 0.02 * frameTimeCounter);
+            noise += 0.36 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.0009 + 0.03 * frameTimeCounter);
+            noise += 0.12 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.003 + 0.07 * vec2(1.0, -1.0) * frameTimeCounter + 0.06);
+            noise += 0.02 * SimplexPerlin2D_Deriv(cloudPosLow.xz * 0.01 - 0.1 * frameTimeCounter);
+
+            float density = noise.x * .745 + .745;
+            vec3 noiseNormal = extractNormalZ(lowCloudNormalMult * -noise.yz).xzy;
+            noiseNormal *= sign(lowCloudHeight - cameraPosition.y);
+            noiseNormal = mat3(gbufferModelView) * noiseNormal;
+            float cloudDotL = dot(noiseNormal, normalize(shadowLightPosition));
+            // cloudDotL = 1.0;
+
+            vec3 cloudColor = skyLightColor(worldTime, rainStrength) * (abs(cloudDotL) * 0.5 + 0.5);
+            float cloudAlpha = smoothstep(2.1 - 2.1*wetness, 3.3 - 0.7*wetness, exp(density)) * smoothstep(far*60, far, length(cloudPosLow.xz + cameraPosition.xz));
+
+            albedo.rgb = mix(albedo.rgb, cloudColor, cloudAlpha);
+        }
+
+        #ifdef cloudDualLayer
+            vec3 cloudPosLow2 = cloudPos * (lowCloud2Height - cameraPosition.y);
+            cloudPosLow2.xz += cameraPosition.xz;
+
+            if((depth == 1.0 || length(cloudPosLow2 - vec3(cameraPosition.x, 0.0, cameraPosition.z)) < length(viewPos)) /* && abs(cloudPos.x) < 1.0 && abs(cloudPos.z) < 1.0 */ && sign(lowCloud2Height - cameraPosition.y) == sign(playerRayDir.y)) {
+                vec3 noise = 0.52 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.0004 + 0.02 * frameTimeCounter);
+                noise += 0.36 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.0009 + 0.03 * frameTimeCounter);
+                noise += 0.12 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.003 + 0.07 * vec2(1.0, -1.0) * frameTimeCounter + 0.06);
+                noise += 0.02 * SimplexPerlin2D_Deriv(cloudPosLow2.xz * 0.01 - 0.1 * frameTimeCounter);
+
+                float density = noise.x * .745 + .745;
+                vec3 noiseNormal = extractNormalZ(lowCloudNormalMult * -noise.yz).xzy;
+                noiseNormal *= sign(lowCloud2Height - cameraPosition.y);
+                noiseNormal = mat3(gbufferModelView) * noiseNormal;
+                float cloudDotL = dot(noiseNormal, normalize(shadowLightPosition));
+
+                vec3 cloudColor = skyLightColor(worldTime, rainStrength) * (abs(cloudDotL) * 0.5 + 0.5);
+                float cloudAlpha = smoothstep(2.1 - 2.1*wetness, 3.3 - 0.7*wetness, exp(density)) * smoothstep(far*35, far, length(cloudPosLow2.xz + cameraPosition.xz));
+
+                albedo.rgb = mix(albedo.rgb, cloudColor, cloudAlpha);
+            }
+        #endif
     #endif
 
     // if(depth == 1.0) {
