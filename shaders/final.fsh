@@ -1,4 +1,4 @@
-#version 120
+#version 400 compatibility
 
 #define viewBuffer off //[off 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 -1 -2 -3]
 #include "functions.glsl"
@@ -24,6 +24,8 @@ uniform sampler2D colortex15;
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
 uniform sampler2D shadowtex0;
+uniform float viewWidth;
+uniform float viewHeight;
 
 void main() {
     #if viewBuffer == 0
@@ -75,4 +77,6 @@ void main() {
     // gl_FragData[0] = vec4(vec3(texture2D(colortex0, TexCoords).a), 1.0);
 
     // gl_FragData[0] = vec4(vec3(1.0 - abs(snoise(TexCoords * 10))), 1.0);
+
+    // gl_FragData[0] = textureLod(colortex0, TexCoords, log2(max(viewWidth, viewHeight)));
 }

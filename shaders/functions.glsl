@@ -1,14 +1,18 @@
 #define PI 3.141592654
 
 /*
+const int colortex0Format = RBGA16F;
 const int colortex1Format = RGBA16;
+const int colortex15Format = R16F;
+const bool colortex15Clear = false;
+const bool colortex0MipmapEnabled = true;
 */
 const int shadowMapResolution = 2048;
 const float sunPathRotation = -20;
 const float shadowDistance = 120;
 
 #define Shadow_Distort_Factor 0.1
-#define Shadow_Bias 0.005
+#define Shadow_Bias 0.003
 
 uniform mat4 gbufferProjection;
 
@@ -17,12 +21,16 @@ vec4 linearToSRGB(vec4 linear) {
     vec4 higher = (pow(abs(linear), vec4(1.0 / 2.4)) * 1.055) - 0.055;
     vec4 lower  = linear * 12.92;
     return mix(higher, lower, step(linear, vec4(0.0031308)));
+
+    // return pow(linear, vec4(1.0 / 2.2));
 }
 
 vec4 sRGBToLinear(vec4 sRGB) {
     vec4 higher = pow((sRGB + 0.055) / 1.055, vec4(2.4));
     vec4 lower  = sRGB / 12.92;
     return mix(higher, lower, step(sRGB, vec4(0.04045)));
+
+    // return pow(sRGB, vec4(2.2));
 }
 
 float cubeLength(vec2 v) {
@@ -44,6 +52,12 @@ vec3 distort(vec3 v) {
 vec3 calcViewPos(vec3 viewVector, float depth) {
 	float viewZ = -gbufferProjection[3][2] / ((depth * 2.0 - 1.0) + gbufferProjection[2][2]);
 	return viewVector * viewZ;
+}
+
+vec3 calcViewPos(vec2 texcoord, float depth, mat4 projectionInverse) {
+    vec4 clipPos = vec4(texcoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 viewPos = projectionInverse * clipPos;
+    return viewPos.xyz / viewPos.w;
 }
 
 vec3 extractNormalZ(vec2 normal) {

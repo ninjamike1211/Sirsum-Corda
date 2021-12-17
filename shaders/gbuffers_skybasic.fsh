@@ -8,10 +8,16 @@ uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
 
-layout(location = 0) out vec3 color;
+in vec4 starData;
+
+layout(location = 0) out vec4 color;
 
 void main() {
-    color = skyColor;
+    if(starData.a > 0.5)
+        discard;
+    color = vec4(0.0);
+
+    // color = skyColor;
 
     // vec2 screenPos = gl_FragCoord.xy / vec2(viewWidth, viewHeight) * 2.0 - 1.0;
     // vec4 viewPosTemp = gbufferProjectionInverse * vec4(screenPos, 1.0, 1.0);
