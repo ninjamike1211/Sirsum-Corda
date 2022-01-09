@@ -1,5 +1,5 @@
 #define PI 3.141592654
-#define skySamples 48
+#define skySamples 38
 #define lightSamples 10
 #define earthRadius 4*636000
 #define atmosphereRadius 4*642000
@@ -11,7 +11,7 @@
 #define rayleighGreenScatter 0.0000105
 #define rayleighBlueScatter 0.0000331
 #define rayleighScatter vec3(rayleighRedScatter, rayleighGreenScatter, rayleighBlueScatter)
-#define mieScatter 0.000021
+#define mieScatter 0.000021 * 1.1
 #define meanCosine 0.76
 
 // https://gist.github.com/wwwtyro/beecc31d65d1004f5a9d
@@ -48,41 +48,6 @@ float intersectFromOutside(vec3 r0, vec3 rd, vec3 s0, float sr) {
     }
     return (-b - sqrt((b*b) - 4.0*a*c))/(2.0*a);
 }
-
-// vec3 skyColor2(vec3 eyeDir, vec3 sunEyeDir, float altitude) {
-
-//     vec3 eyeOrigin = vec3(0.0, earthRadius + 0.0001 * (altitude-seaLevel), 0.0);
-
-//     float rayLength = raySphereIntersect(eyeOrigin, eyeDir, vec3(0.0), atmosphereRadius);
-    
-//     vec3 position = 
-//     for(int i = 0; i < skySamples; ++i, position += increment) {
-//         float height = length(position);
-//         vec3 density = calculateAtmosphereDensity(height, dot(position, rayDir) / height);
-//         if(density.y > 1e35) break;
-//         vec3 airmass = stepSize * density;
-//         vec3 stepOpticalDepth = ec * airmass;
-
-//         vec3 stepTransmittance = saturate(exp(-stepOpticalDepth));
-//         vec3 stepTransmittedFraction = saturate((stepTransmittance - 1.0) / -stepOpticalDepth);
-//         vec3 visibleScattering = transmittance * stepTransmittedFraction;
-
-//         mat3x3 scatteringViewStep;
-//         scatteringViewStep[0] = sc * vec2(airmass.xy * phase);
-//         scatteringViewStep[0] *= visibleScattering;
-
-//         scattering += scatteringViewStep[0] * calculateAtmosphereTransmittance(sunDirection, position, ec);
-
-//         //scatteredMulti += multipleScattering(SCATTERING_STEPS, i, sunDirection, rayDir, visibleScattering, airmass, position, sc, ec);
-
-//         transmittance *= stepTransmittance;
-//         opticalDepth += stepOpticalDepth;
-//     }
-
-
-
-//     return vec3(rayLength);
-// }
 
 vec3 skyColor(vec3 viewDir, vec3 sunDir, float altitude, mat3 modelViewInverse) {
 

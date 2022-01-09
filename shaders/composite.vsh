@@ -1,9 +1,9 @@
-#version 420 compatibility
+#version 400 compatibility
 
 #include "functions.glsl"
 #include "sky.glsl"
 
-#define ExposureSpeed 10
+#define ExposureSpeed 1000
 
 out vec2 texcoord;
 out vec3 viewVector;

@@ -1,8 +1,11 @@
 #define PI 3.141592654
+#define goldenRatioConjugate 0.61803398875
 
 /*
-const int colortex0Format = RBGA16F;
+const int colortex0Format = RGBA16F;
+const int colortex0ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 const int colortex1Format = RGBA16;
+const int colortex14Format = R8;
 const int colortex15Format = R16F;
 const bool colortex15Clear = false;
 const bool colortex0MipmapEnabled = true;
@@ -12,9 +15,13 @@ const float sunPathRotation = -20;
 const float shadowDistance = 120;
 
 #define Shadow_Distort_Factor 0.1
-#define Shadow_Bias 0.003
+#define Shadow_Bias 0.00005
 
 uniform mat4 gbufferProjection;
+uniform mat4 shadowModelView;
+uniform mat4 shadowProjection;
+uniform float near;
+uniform float far;
 
 // https://www.titanwolf.org/Network/q/bb468365-7407-4d26-8441-730aaf8582b5/x
 vec4 linearToSRGB(vec4 linear) {
@@ -31,6 +38,34 @@ vec4 sRGBToLinear(vec4 sRGB) {
     return mix(higher, lower, step(sRGB, vec4(0.04045)));
 
     // return pow(sRGB, vec4(2.2));
+}
+
+float linearizeDepthFast(float depth) {
+    return (near * far) / (depth * (near - far) + far);
+}
+
+float linearizeDepthNorm(float depth) {
+  return (linearizeDepthFast(depth) - near) / (far - near);
+}
+
+vec3 projectAndDivide(mat4 projectionMatrix, vec3 position) {
+  vec4 homoPos = projectionMatrix * vec4(position, 1.0);
+  return homoPos.xyz / homoPos.w;
+}
+
+vec2 GetVogelDiskSample(int sampleIndex, int sampleCount, float phi) 
+{
+    const float goldenAngle = 2.399963;
+    float sampleIndexF = float(sampleIndex);
+    float sampleCountF = float(sampleCount);
+    
+    float r = sqrt(sampleIndexF + 0.5) / sqrt(sampleCountF);
+    float theta = sampleIndexF * goldenAngle + phi;
+    
+    float sine = sin(theta);
+    float cosine = cos(theta);
+    
+    return vec2(cosine, sine) * r;
 }
 
 float cubeLength(vec2 v) {
@@ -54,10 +89,34 @@ vec3 calcViewPos(vec3 viewVector, float depth) {
 	return viewVector * viewZ;
 }
 
-vec3 calcViewPos(vec2 texcoord, float depth, mat4 projectionInverse) {
+vec3 screenToView(vec2 texcoord, float depth, mat4 projectionInverse) {
     vec4 clipPos = vec4(texcoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 viewPos = projectionInverse * clipPos;
     return viewPos.xyz / viewPos.w;
+}
+
+vec3 viewToScreen(vec3 viewPos, mat4 projectionMatrix) {
+  return projectAndDivide(projectionMatrix, viewPos) * 0.5 + 0.5;
+}
+
+vec3 shadowVisibility(vec3 shadowPos, sampler2D shadowtex0, sampler2D shadowtex1, sampler2D shadowcolor0) {
+    vec4 shadowColor = texture2D(shadowcolor0, shadowPos.xy);
+    shadowColor.rgb = shadowColor.rgb * (1.0 - shadowColor.a);
+    float visibility0 = step(shadowPos.z, texture2D(shadowtex0, shadowPos.xy).r);
+    float visibility1 = step(shadowPos.z, texture2D(shadowtex1, shadowPos.xy).r);
+    return mix(shadowColor.rgb * visibility1, vec3(1.0f), visibility0);
+}
+
+vec3 calcShadowPos(vec3 viewPos, mat4 modelViewInverse) {
+  vec4 playerPos = modelViewInverse * vec4(viewPos, 1.0);
+  vec3 shadowPos = (shadowProjection * (shadowModelView * playerPos)).xyz;
+  float distortFactor = getDistortFactor(shadowPos.xy);
+  shadowPos.xyz = distort(shadowPos.xyz, distortFactor); //apply shadow distortion
+  return shadowPos.xyz * 0.5 + 0.5; //convert from -1 ~ +1 to 0 ~ 1
+}
+
+void applyShadowBias(inout vec3 shadowPos, float NGdotL) {
+  shadowPos.z -= Shadow_Bias / abs(NGdotL);
 }
 
 vec3 extractNormalZ(vec2 normal) {

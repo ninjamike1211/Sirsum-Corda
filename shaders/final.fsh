@@ -79,4 +79,6 @@ void main() {
     // gl_FragData[0] = vec4(vec3(1.0 - abs(snoise(TexCoords * 10))), 1.0);
 
     // gl_FragData[0] = textureLod(colortex0, TexCoords, log2(max(viewWidth, viewHeight)));
+
+    // gl_FragData[0] = vec4(vec3(linearizeDepthNorm(texture2D(depthtex0, TexCoords).r)), 1.0);
 }

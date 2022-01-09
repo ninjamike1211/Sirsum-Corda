@@ -24,6 +24,6 @@ void main() {
 
     vec3 sunColor = skyColor(normalize(sunPosition), normalize(sunPosition), eyeAltitude, mat3(gbufferModelViewInverse));
     vec3 moonColor = skyMoonColor(normalize(moonPosition), normalize(moonPosition), eyeAltitude, mat3(gbufferModelViewInverse));
-    SunMoonColor = vec3(mix(0.0, 1.0, smoothstep(0.0, 1.0, sunColor.r)) + mix(0.0, 0.4, smoothstep(0.0, 0.01, moonColor.r)));
+    SunMoonColor = vec3(mix(0.0, 1.5, smoothstep(0.0, 1.0, sunColor.r)) + mix(0.0, 0.6, smoothstep(0.0, 0.01, moonColor.r)));
     // SunMoonColor = lightColor(normalize(sunPosition), normalize(moonPosition), eyeAltitude, mat3(gbufferModelViewInverse));
 }

@@ -1,5 +1,6 @@
 in vec4 at_tangent;
 in vec2 mc_midTexCoord;
+in vec4 mc_Entity;
 
 out vec2 texcoord;
 out vec4 glColor;
@@ -7,6 +8,7 @@ flat out vec3 glNormal;
 out vec2 lmcoord;
 out vec3 viewPos;
 flat out vec4 textureBounds;
+flat out vec4 entity;
 
 #ifdef MC_NORMAL_MAP
     flat out mat3 tbn;
@@ -19,6 +21,7 @@ void main() {
     lmcoord = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
     glColor = gl_Color;
     glNormal = (gl_ModelViewMatrix * vec4(gl_Normal, 0.0)).xyz;
+    entity = mc_Entity;
 
     viewPos = (gl_ModelViewMatrix * gl_Vertex).xyz;
 

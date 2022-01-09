@@ -15,8 +15,12 @@ flat in vec4 textureBounds;
 layout(location = 0) out vec4 shadowColor;
 
 uniform sampler2D texture;
-uniform float alphaTestRef;
 uniform sampler2D normals;
+uniform sampler2D colortex6;
+uniform float alphaTestRef;
+uniform vec3 cameraPosition;
+uniform mat4 shadowModelViewInverse;
+uniform float frameTimeCounter;
 
 void main() {
 
@@ -49,4 +53,8 @@ void main() {
 
     shadowColor = texture2D(texture, texcoordUse) * glColor;
     if (shadowColor.a < alphaTestRef) discard;
+
+    // vec3 worldPos = (shadowModelViewInverse * vec4(viewPos, 1.0)).xyz + cameraPosition;
+    // shadowColor *= texture2D(colortex6, fract(worldPos.xz * 0.1 + frameTimeCounter * 0.01)).r * 1.0;
+    // // shadowColor.rgb = vec3(1.0);
 }
